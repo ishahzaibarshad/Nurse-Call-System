@@ -43,3 +43,7 @@ migrations/**/__pycache__/
 EOF
 
 
+
+# backups
+*.bak
+*.bak.*
