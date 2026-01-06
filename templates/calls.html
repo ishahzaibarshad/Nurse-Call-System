@@ -2,195 +2,336 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Real-Time Calls - Hospital Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Calls - Nurse Call System</title>
 
   <link href="/static/css/output.css" rel="stylesheet" />
 
   <style>
     :root{
-      --bg:#f6f7fb;
-      --panel:#ffffff;
-      --border:#e5e7eb;
-      --text:#0b1220;
+      --bg1:#f6f7ff;
+      --bg2:#f3fbff;
+      --card:#ffffff;
+      --text:#0f172a;
       --muted:#64748b;
-      --card1:#0f172a;
-      --card2:#111c34;
-      --white: #ffffff;
-      --shadow:0 10px 30px rgba(2,6,23,.08);
-      --r:18px;
+      --border:#e2e8f0;
+      --shadow: 0 10px 30px rgba(15,23,42,.08);
+      --shadow2: 0 12px 50px rgba(15,23,42,.10);
+      --primary:#0f172a;
+      --accent:#4f46e5;
+      --accent2:#06b6d4;
+      --danger:#ef4444;
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --radius:18px;
     }
 
-    *{ margin:0; padding:0; box-sizing:border-box; font-family: Inter, system-ui, Segoe UI, Roboto, Arial; }
-    body{ background:var(--bg); color:var(--text); min-height:100vh; }
-
-    .layout{ display:flex; height:100vh; overflow:hidden; }
-
-    .sidebar{
-      width:88px;
-      background:#0b1220;
-      color:#cbd5e1;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      padding:18px 10px;
-      gap:14px;
-      border-right:1px solid rgba(255,255,255,.06);
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 15% 10%, rgba(79,70,229,.12), transparent 55%),
+        radial-gradient(1200px 600px at 85% 0%, rgba(6,182,212,.10), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      min-height: 100vh;
     }
-    .nav a{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:6px;
-      padding:10px 10px;
-      border-radius:14px;
-      color:#94a3b8;
-      text-decoration:none;
-      font-weight:700;
-      font-size:12px;
-      width:100%;
+
+    .layout{ display:flex; min-height:100vh; width:100%; }
+    .sidebar{ width:260px; padding:18px; display:none; }
+    .sidebar .shell{
+      height: calc(100vh - 36px);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: var(--radius);
+      background: rgba(15,23,42,.92);
+      box-shadow: var(--shadow2);
+      overflow:auto;
     }
-    .nav a:hover{ background:rgba(255,255,255,.06); color:#fff; }
-    .nav a.active{ background:rgba(59,130,246,.16); color:#fff; border:1px solid rgba(59,130,246,.25); }
+    .sidebar .shell *{ color:#fff; }
+    @media (min-width: 1024px){ .sidebar{ display:block; } }
 
-    .main{ flex:1; display:flex; flex-direction:column; overflow:hidden; }
+    .main{ flex:1; padding:22px; }
+    .container{ max-width: 1180px; margin: 0 auto; }
 
+    /* Header like config/history */
     .topbar{
-      background:var(--panel);
-      border-bottom:1px solid var(--border);
-      padding:14px 18px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .title{ display:flex; flex-direction:column; gap:4px; }
+    .title h1{ margin:0; font-size: 26px; letter-spacing: -0.02em; }
+    .title p{ margin:0; color:var(--muted); font-size: 13px; }
+
+    .toolbar{
       display:flex;
       align-items:center;
-      justify-content:space-between;
-      position:sticky;
-      top:0;
-      z-index:10;
+      gap:10px;
+      flex-wrap: wrap;
+      justify-content:flex-end;
     }
-    .title{ font-weight:900; font-size:18px; }
-    .sub{ color:var(--muted); font-weight:600; font-size:13px; margin-top:3px; }
 
-    .controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .input{
+      width: 220px;
+      max-width: 70vw;
+      padding: 11px 12px 11px 38px;
+      border-radius: 12px;
+      border: 1px solid rgba(226,232,240,1);
+      outline:none;
+      font-size: 14px;
+      background:#fff;
+      transition: all .15s ease;
+    }
+    .input:focus{
+      border-color: rgba(79,70,229,.6);
+      box-shadow: 0 0 0 4px rgba(79,70,229,.12);
+    }
+    .search{ position:relative; }
+    .search svg{
+      position:absolute;
+      left:12px; top:50%;
+      transform: translateY(-50%);
+      opacity:.55;
+    }
+
+    .btn{
+      border:1px solid rgba(226,232,240,1);
+      background:#fff;
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight:800;
+      font-size: 13px;
+      transition: all .18s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+      box-shadow: 0 8px 22px rgba(15,23,42,.06);
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 12px 28px rgba(15,23,42,.10); }
+
+    .btnPrimary{
+      background: linear-gradient(135deg, rgba(15,23,42,1), rgba(79,70,229,1));
+      color:#fff;
+      border-color: transparent;
+      box-shadow: 0 14px 36px rgba(79,70,229,.22);
+    }
+
+    .select{
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(226,232,240,1);
+      background:#fff;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+      outline:none;
+      cursor:pointer;
+      box-shadow: 0 8px 22px rgba(15,23,42,.06);
+    }
 
     .pill{
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:#fff;
-      font-weight:900;
-      cursor:pointer;
-      font-size:12px;
-      letter-spacing:.02em;
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(226,232,240,1);
+      background: rgba(255,255,255,.85);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 22px rgba(15,23,42,.06);
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
     }
-    .pillOn{ border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.10); }
-
-    select{
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:#fff;
-      font-weight:900;
-      font-size:12px;
-      cursor:pointer;
+    .dot{
+      width: 10px; height: 10px; border-radius: 99px;
+      background: #ef4444;
+      box-shadow: 0 0 0 4px rgba(239,68,68,.15);
     }
-
-    .content{
-      flex:1;
-      overflow:auto;
-      padding:18px;
+    .dot.ok{
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34,197,94,.15);
     }
 
+    /* Page sections */
+    .pageCard{
+      background: rgba(255,255,255,.82);
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+      margin-bottom: 14px;
+    }
+    .pageCardHead{
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(226,232,240,.9);
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .pageCardHead h2{
+      margin:0;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+      font-weight: 900;
+    }
+    .pageCardHead p{
+      margin:6px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .pageCardBody{ padding: 14px 14px 16px; }
+
+    /* Grid + cards (your existing calls cards, tuned to match theme) */
     .grid{
       display:grid;
-      grid-template-columns:repeat(auto-fill,minmax(340px,1fr));
-      gap:16px;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      align-items: start;
     }
 
-    .call-card{
-      background:linear-gradient(180deg,var(--card1),var(--card2));
-      border-radius:var(--r);
-      border:2px solid rgba(255,255,255,.08);
-      box-shadow:var(--shadow);
-      padding:16px;
-      color:#e5e7eb;
+    .card{
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: 22px;
+      overflow:hidden;
+      box-shadow: 0 10px 28px rgba(15,23,42,.08);
+      transition: .18s ease;
+      position:relative;
+      backdrop-filter: blur(10px);
+    }
+    .card:hover{ transform: translateY(-2px); box-shadow: 0 16px 46px rgba(15,23,42,.14); }
+
+    .card::before{
+      content:"";
+      position:absolute;
+      left:0; top:0; bottom:0;
+      width: 6px;
+      background: var(--ev, var(--accent));
+    }
+
+    .cardTop{
+      padding: 16px 16px 12px;
       display:flex;
-      flex-direction:column;
-      gap:12px;
-      min-height: 320px;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 12px;
     }
-
-    .row{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
-    .room-name{ font-size:20px; font-weight:1000; line-height:1.15; }
-    .bed-name{ color:rgba(229,231,235,.75); font-weight:800; margin-top:4px; }
+    .cardTitle{
+      display:flex;
+      gap: 12px;
+      align-items:flex-start;
+    }
+    .iconBox{
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      display:grid;
+      place-items:center;
+      background: var(--evSoft, rgba(79,70,229,.12));
+      color: var(--ev, var(--accent));
+      border: 1px solid rgba(226,232,240,.9);
+      flex: 0 0 auto;
+    }
+    .t1{
+      font-weight: 1000;
+      font-size: 14px;
+      margin: 0;
+      line-height: 1.15;
+    }
+    .t2{
+      margin: 4px 0 0;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+    }
 
     .badge{
-      padding:6px 10px;
-      border-radius:999px;
-      font-size:11px;
-      font-weight:1000;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.08);
-      white-space:nowrap;
-      text-transform:uppercase;
-      letter-spacing:.08em;
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 1000;
+      color: var(--ev, var(--accent));
+      background: var(--evSoft, rgba(79,70,229,.12));
+      border: 1px solid rgba(226,232,240,.9);
+      white-space: nowrap;
+    }
+    .badge .miniDot{
+      width: 8px; height: 8px; border-radius: 99px;
+      background: var(--ev, var(--accent));
+      box-shadow: 0 0 0 4px rgba(0,0,0,.04);
     }
 
-    .metaRow{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .meta{
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;
-      padding:10px;
+      margin: 0 16px 16px;
+      padding: 12px 12px;
+      border-radius: var(--radius);
+      background: rgba(248,250,252,.95);
+      border: 1px solid rgba(226,232,240,.9);
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 12px;
     }
-    .label{ font-size:11px; font-weight:900; color:rgba(229,231,235,.65); text-transform:uppercase; letter-spacing:.08em; }
-    .value{ margin-top:4px; font-size:13px; font-weight:900; }
-
-    .event-badge{
-      width:fit-content;
-      padding:8px 12px;
-      border-radius:14px;
-      font-weight:1000;
-      font-size:12px;
-      border:1px solid rgba(255,255,255,.10);
+    .meta .k{
+      font-size: 10px;
+      font-weight: 1000;
+      letter-spacing: .8px;
+      color: rgba(100,116,139,.9);
+    }
+    .meta .v{
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--text);
     }
 
-    .camera-feed{
-      position:relative;
-      width:100%;
-      height:190px;
-      border-radius:16px;
+    .camera{
+      margin: 0 16px 16px;
+      border-radius: var(--radius);
       overflow:hidden;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.05);
+      border: 1px solid rgba(226,232,240,.9);
+      background: rgba(2,6,23,.04);
+      aspect-ratio: 16 / 10;
     }
-    .camera-feed img{
+    .camera img, .camera video{
       width:100%;
       height:100%;
-      object-fit:cover;
+      object-fit: cover;
       display:block;
     }
-    .cam-overlay{
-      position:absolute;
-      top:10px;
-      left:10px;
-      padding:6px 10px;
-      border-radius:999px;
-      font-size:11px;
-      font-weight:1000;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      z-index:2;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(0,0,0,.35);
-      backdrop-filter: blur(6px);
+    .camPlaceholder{
+      height:100%;
+      display:grid;
+      place-items:center;
+      color: var(--muted);
+      font-weight: 900;
+      font-size: 12px;
     }
-    .cam-live{ background:rgba(34,197,94,.22); border-color:rgba(34,197,94,.35); }
-    .cam-off{ background:rgba(148,163,184,.18); border-color:rgba(148,163,184,.30); }
 
     .empty{
+      grid-column: 1 / -1;
+      padding: 20px;
       text-align:center;
-      color:var(--muted);
-      padding:40px 0;
-      font-weight:800;
+      color: var(--muted);
+      font-weight: 900;
+      background: rgba(255,255,255,.82);
+      border: 1px dashed rgba(226,232,240,.9);
+      border-radius: 22px;
+      backdrop-filter: blur(10px);
     }
   </style>
 </head>
@@ -198,49 +339,76 @@
 <body>
   <div class="layout">
     <aside class="sidebar">
-      <div style="width:44px;height:44px;border-radius:14px;background:rgba(59,130,246,.16);border:1px solid rgba(59,130,246,.25);"></div>
-
-      <nav class="nav" style="width:100%;display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-        <a href="/" >Dashboard</a>
-        <a href="/calls" class="active">Calls</a>
-        <a href="/history">History</a>
-        <a href="/config">Config</a>
-      </nav>
-
-      <div style="margin-top:auto;width:42px;height:42px;border-radius:999px;background:rgba(255,255,255,.08);"></div>
+      <div id="sidebar" class="shell"></div>
     </aside>
 
     <main class="main">
-      <header class="topbar">
-        <div>
-          <div class="title">Real-Time Calls</div>
-          <div class="sub">Live monitoring of all active calls</div>
-        </div>
+      <div class="container">
 
-        <div class="controls">
-          <div id="ws-status-container" class="pill" style="display:flex;align-items:center;gap:8px;">
-            <span id="ws-dot" style="width:10px;height:10px;border-radius:999px;background:#ef4444;display:inline-block;"></span>
-            <span id="ws-text">Connecting...</span>
+        <div class="topbar">
+          <div class="title">
+            <h1>Calls</h1>
+            <p>Active calls appear on top — all beds stay visible below.</p>
           </div>
 
-          <button id="camera-toggle-btn" class="pill" onclick="app.toggleShowCameras()">
-            <span id="camera-toggle-text">Show Cameras</span>
-          </button>
+          <div class="toolbar">
+            <div class="search">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="rgba(15,23,42,.55)" stroke-width="2"/>
+                <path d="M16.6 16.6L21 21" stroke="rgba(15,23,42,.55)" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <input id="search-input" class="input" type="text" placeholder="Search bed / room / ward"
+                     oninput="app.onSearch(this.value)" />
+            </div>
 
-          <button id="auto-refresh-btn" class="pill pillOn" onclick="app.toggleAutoRefresh()">
-            <span id="auto-refresh-text">Auto Refresh: ON</span>
-          </button>
+            <div class="pill" id="ws-status-container">
+              <span id="ws-status" class="dot"></span>
+              <span id="ws-text">Connecting...</span>
+            </div>
 
-          <select id="filter-event-type">
-            <option value="">All Event Types</option>
-          </select>
+            <button class="btn" onclick="app.toggleShowCameras()">
+              <span id="camera-toggle-text">Show Cameras (Active Only)</span>
+            </button>
+
+            <button class="btn" onclick="app.toggleAutoRefresh()">
+              <span id="auto-refresh-text">Auto Refresh: ON</span>
+            </button>
+
+            <select id="filter-event-type" class="select">
+              <option value="">All</option>
+              <option value="idle">Idle</option>
+            </select>
+          </div>
         </div>
-      </header>
 
-      <div class="content">
-        <div id="calls-grid" class="grid">
-          <div class="empty">Loading...</div>
+        <div class="pageCard">
+          <div class="pageCardHead">
+            <div>
+              <h2>Incoming Calls (Active) <span class="pill" style="margin-left:10px;" id="active-count">0 Active</span></h2>
+              <p>Updates live through WebSocket</p>
+            </div>
+          </div>
+          <div class="pageCardBody">
+            <div id="active-grid" class="grid">
+              <div class="empty">No active calls</div>
+            </div>
+          </div>
         </div>
+
+        <div class="pageCard">
+          <div class="pageCardHead">
+            <div>
+              <h2>All Beds</h2>
+              <p>Active beds are highlighted</p>
+            </div>
+          </div>
+          <div class="pageCardBody">
+            <div id="beds-grid" class="grid">
+              <div class="empty">Loading beds...</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>
@@ -248,206 +416,538 @@
   <script>
     const app = {
       data: {
-        calls: {},
-        customColors: {},
+        beds: [],
+        bedMap: {},
         ws: null,
         autoRefresh: true,
         selectedFilter: '',
         showCameras: false,
-        lastRenderKey: ''
+        customColors: {},
+        activeByBed: {},
+        lastRenderKey: '',
+        searchQuery: ''
       },
 
-      init() {
-        this.loadCustomColors();
+      _activeFetchInFlight: false,
+      _wsDebounceTimer: null,
+
+      // ---------- NEW: helpers to support BOTH snake_case + camelCase ----------
+      pick(obj, ...keys) {
+        for (const k of keys) {
+          if (!obj) continue;
+          const v = obj[k];
+          if (v !== undefined && v !== null && v !== '') return v;
+        }
+        return undefined;
+      },
+      asArray(maybe) {
+        if (Array.isArray(maybe)) return maybe;
+        if (maybe && Array.isArray(maybe.events)) return maybe.events;
+        if (maybe && Array.isArray(maybe.data)) return maybe.data;
+        return [];
+      },
+      normEvent(ev) {
+        // Normalize server event into the fields this UI uses
+        const e = {
+          id: this.pick(ev, 'id'),
+          status: this.pick(ev, 'status'),
+          event_type: this.pick(ev, 'event_type', 'eventType', 'event'),
+          system_timestamp: this.pick(ev, 'system_timestamp', 'systemTimestamp', 'timestamp', 'time'),
+          bed_id: this.pick(ev, 'bed_id', 'bedId'),
+          bed_name: this.pick(ev, 'bed_name', 'bedName'),
+          bed_number: this.pick(ev, 'bed_number', 'bedNumber'),
+          room_id: this.pick(ev, 'room_id', 'roomId'),
+          room_name: this.pick(ev, 'room_name', 'roomName'),
+          room_number: this.pick(ev, 'room_number', 'roomNumber'),
+          ward_name: this.pick(ev, 'ward_name', 'wardName'),
+          floor_name: this.pick(ev, 'floor_name', 'floorName'),
+          camera_available: !!this.pick(ev, 'camera_available', 'cameraAvailable'),
+          camera_url: this.pick(ev, 'camera_url', 'cameraUrl'),
+          intercom_ip: this.pick(ev, 'intercom_ip', 'intercomIp')
+        };
+
+        // If API doesn't send names, enrich from bedMap
+        const bid = e.bed_id != null ? String(e.bed_id) : '';
+        const b = bid ? this.data.bedMap[bid] : null;
+        if (b) {
+          e.bed_name = e.bed_name || b.bed_name;
+          e.bed_number = e.bed_number || b.bed_number;
+          e.room_name = e.room_name || b.room_name;
+          e.ward_name = e.ward_name || b.ward_name;
+          e.floor_name = e.floor_name || b.floor_name;
+        }
+
+        // If camera_available missing but camera is configured, infer availability
+        const camConfigured = this.pick(ev, 'cameraConfigured', 'camera_configured');
+        if (e.camera_available === false && camConfigured === true) e.camera_available = true;
+
+        return e;
+      },
+      normBed(b) {
+        return {
+          id: this.pick(b, 'id'),
+          room_id: this.pick(b, 'room_id', 'roomId'),
+          room_name: this.pick(b, 'room_name', 'roomName'),
+          bed_name: this.pick(b, 'bed_name', 'bedName'),
+          bed_number: this.pick(b, 'bed_number', 'bedNumber'),
+          camera_id: this.pick(b, 'camera_id', 'cameraId'),
+          status: this.pick(b, 'status'),
+          ip_address: this.pick(b, 'ip_address', 'ipAddress'),
+          ward_name: this.pick(b, 'ward_name', 'wardName'),
+          floor_name: this.pick(b, 'floor_name', 'floorName')
+        };
+      },
+      // ----------------------------------------------------------------------
+
+      async provideSidebar(){
+        try{
+          const r = await fetch("/sidebar.html");
+          if (!r.ok) return;
+          const el = document.getElementById("sidebar");
+          if (el) el.innerHTML = await r.text();
+        }catch{}
+      },
+
+      async init() {
+        await this.provideSidebar();
+        await this.loadCustomColors(true);
+        await this.loadBeds();
+        await this.loadActiveCalls();
+
         this.setupWebSocket();
-        this.loadActiveCalls();
-        this.populateEventTypeFilter();
+        await this.populateEventTypeFilter();
 
         setInterval(() => {
           if (this.data.autoRefresh) this.loadActiveCalls();
         }, 5000);
 
-        setInterval(() => this.loadCustomColors(false), 30000);
+        setInterval(() => this.loadCustomColors(true), 30000);
+
+        setInterval(() => {
+          try {
+            if (this.data.ws && this.data.ws.readyState === 1) this.data.ws.send("ping");
+          } catch (e) {}
+        }, 15000);
+
         setInterval(() => this.updateTimeLabels(), 1000);
+
+        document.getElementById('filter-event-type').addEventListener('change', (e) => {
+          this.data.selectedFilter = e.target.value;
+          this.forceRender();
+        });
+      },
+
+      onSearch(v) {
+        this.data.searchQuery = (v || '').toLowerCase().trim();
+        this.forceRender();
       },
 
       setupWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         this.data.ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
 
-        this.data.ws.onopen = () => {
-          this.updateWSStatus(true);
-          // ping so server receive_text doesn't sit forever and proxies don't drop it
-          this._pingTimer = setInterval(() => {
-            try {
-              if (this.data.ws && this.data.ws.readyState === 1) this.data.ws.send("ping");
-            } catch(e) {}
-          }, 20000);
+        this.data.ws.onopen = () => this.updateWSStatus(true);
+
+        // IMPORTANT: we still refresh from API, but now it supports eventType/systemTimestamp too
+        this.data.ws.onmessage = () => {
+          clearTimeout(this._wsDebounceTimer);
+          this._wsDebounceTimer = setTimeout(() => this.loadActiveCalls(), 200);
         };
 
-        this.data.ws.onmessage = () => this.loadActiveCalls();
-
         this.data.ws.onerror = () => this.updateWSStatus(false);
-
         this.data.ws.onclose = () => {
           this.updateWSStatus(false);
-          if (this._pingTimer) clearInterval(this._pingTimer);
-          setTimeout(() => this.setupWebSocket(), 5000);
+          setTimeout(() => this.setupWebSocket(), 3000);
         };
       },
 
       updateWSStatus(connected) {
-        const dot = document.getElementById('ws-dot');
+        const status = document.getElementById('ws-status');
         const text = document.getElementById('ws-text');
 
         if (connected) {
-          dot.style.background = '#22c55e';
+          status.className = 'dot ok';
           text.textContent = 'Connected';
         } else {
-          dot.style.background = '#ef4444';
+          status.className = 'dot';
           text.textContent = 'Disconnected';
         }
       },
 
-      async loadCustomColors(doRender = true) {
+      applyThemeIfProvided(data){
+        const scheme = data?.scheme || data?.theme || data?.active_scheme || null;
+        if (!scheme || typeof scheme !== 'object') return;
+
+        const map = {
+          bg1: scheme.bg1, bg2: scheme.bg2,
+          text: scheme.text || scheme.fg || scheme.text_color,
+          muted: scheme.muted || scheme.muted_text || scheme.subtext,
+          border: scheme.border || scheme.border_color,
+          accent: scheme.accent || scheme.primary || scheme.primary_color,
+          accent2: scheme.accent2,
+        };
+
+        const root = document.documentElement.style;
+        if (map.bg1) root.setProperty('--bg1', map.bg1);
+        if (map.bg2) root.setProperty('--bg2', map.bg2);
+        if (map.text) root.setProperty('--text', map.text);
+        if (map.muted) root.setProperty('--muted', map.muted);
+        if (map.border) root.setProperty('--border', map.border);
+        if (map.accent) root.setProperty('--accent', map.accent);
+        if (map.accent2) root.setProperty('--accent2', map.accent2);
+      },
+
+      async loadCustomColors(applyThemeAlso = true) {
         try {
           const response = await fetch('/api/config/colors');
           const data = await response.json();
-          this.data.customColors = {};
+
+          if (applyThemeAlso) this.applyThemeIfProvided(data);
+
+          const next = {};
           const arr = data.colors || data || [];
           if (Array.isArray(arr)) {
             arr.forEach(c => {
-              this.data.customColors[(c.event_type || '').toLowerCase()] = c.color;
+              const key = (this.pick(c, 'event_type', 'eventType') || '').toLowerCase().trim();
+              const col = this.pick(c, 'color', 'primary_color', 'primaryColor');
+              if (key && col) next[key] = col;
             });
           }
-          if (doRender) this.renderCalls();
+          this.data.customColors = next;
         } catch (e) {
-          console.error("[v0] colors error:", e);
+          console.error("[calls] colors error:", e);
+        }
+      },
+
+      async loadBeds() {
+        try {
+          const [floorsRes, wardsRes, roomsRes, bedsRes] = await Promise.all([
+            fetch('/api/config/floors'),
+            fetch('/api/config/wards'),
+            fetch('/api/config/rooms'),
+            fetch('/api/config/beds')
+          ]);
+
+          const floorsRaw = await floorsRes.json();
+          const wardsRaw  = await wardsRes.json();
+          const roomsRaw  = await roomsRes.json();
+          const bedsRaw   = await bedsRes.json();
+
+          const floors = floorsRaw.floors || floorsRaw || [];
+          const wards  = wardsRaw.wards  || wardsRaw  || [];
+          const rooms  = roomsRaw.rooms  || roomsRaw  || [];
+          const beds   = bedsRaw.beds    || bedsRaw   || [];
+
+          const floorMap = {}; (Array.isArray(floors) ? floors : []).forEach(f => {
+            const id = this.pick(f, 'id');
+            if (id != null) floorMap[id] = f;
+          });
+          const wardMap  = {}; (Array.isArray(wards) ? wards : []).forEach(w => {
+            const id = this.pick(w, 'id');
+            if (id != null) wardMap[id] = w;
+          });
+          const roomMap  = {}; (Array.isArray(rooms) ? rooms : []).forEach(r => {
+            const id = this.pick(r, 'id');
+            if (id != null) roomMap[id] = r;
+          });
+
+          const normBeds = (Array.isArray(beds) ? beds : []).map(b0 => this.normBed(b0));
+
+          this.data.beds = normBeds.map(b => {
+            const roomId = this.pick(b, 'room_id');
+            const room = roomMap[roomId] || {};
+            const wardId = this.pick(room, 'ward_id', 'wardId');
+            const ward = wardMap[wardId] || {};
+            const floorId = this.pick(ward, 'floor_id', 'floorId');
+            const floor = floorMap[floorId] || {};
+
+            return {
+              ...b,
+              room_name: b.room_name || this.pick(room, 'room_name', 'roomName') || 'Unknown Room',
+              ward_name: b.ward_name || this.pick(ward, 'name', 'ward_name', 'wardName') || '',
+              floor_name: b.floor_name || this.pick(floor, 'name', 'floor_name', 'floorName') || ''
+            };
+          });
+
+          this.data.beds.sort((a,b) => {
+            const r = (a.room_name || '').localeCompare(b.room_name || '');
+            if (r !== 0) return r;
+            const an = parseInt(a.bed_number || '0', 10);
+            const bn = parseInt(b.bed_number || '0', 10);
+            if (an !== bn) return an - bn;
+            return (a.bed_name || '').localeCompare(b.bed_name || '');
+          });
+
+          this.data.bedMap = {};
+          this.data.beds.forEach(b => { this.data.bedMap[String(b.id)] = b; });
+        } catch (e) {
+          console.error("[calls] loadBeds error:", e);
         }
       },
 
       async loadActiveCalls() {
+        if (this._activeFetchInFlight) return;
+        this._activeFetchInFlight = true;
+
         try {
-          const response = await fetch('/api/events/recent');
-          const events = await response.json();
-          const activeCalls = events.filter(e => e.status === 'active');
+          const response = await fetch('/api/events/recent?limit=200');
+          const raw = await response.json();
+          const events = this.asArray(raw);
 
-          const existingIds = new Set(Object.keys(this.data.calls));
-          const newIds = new Set();
+          // Normalize events so both `event_type` and `eventType` work
+          const normalized = events.map(ev => this.normEvent(ev));
 
-          activeCalls.forEach(event => {
-            const sessionId = event.call_session_id || event.id;
-            newIds.add(String(sessionId));
-            const isNew = !this.data.calls[sessionId];
-            this.data.calls[sessionId] = { ...event, isNew, updated: Date.now() };
+          // Active = status active + has bed_id (supports bedId too via normEvent)
+          const active = normalized.filter(e =>
+            (String(e.status || '').toLowerCase() === 'active') &&
+            e.bed_id != null
+          );
+
+          // Keep latest per bed
+          const map = {};
+          active.forEach(ev => {
+            const bid = String(ev.bed_id);
+            const existing = map[bid];
+
+            const evTs = this.parseTs(ev.system_timestamp);
+            const exTs = existing ? this.parseTs(existing.system_timestamp) : null;
+
+            if (!existing || (evTs && exTs && evTs > exTs) || (evTs && !exTs)) {
+              map[bid] = ev;
+            }
           });
 
-          existingIds.forEach(id => {
-            if (!newIds.has(String(id))) delete this.data.calls[id];
-          });
-
-          this.renderCalls();
+          this.data.activeByBed = map;
+          this.renderAll();
         } catch (e) {
-          console.error("[v0] calls error:", e);
+          console.error("[calls] loadActiveCalls error:", e);
+        } finally {
+          this._activeFetchInFlight = false;
         }
+      },
+
+      forceRender() {
+        this.data.lastRenderKey = '';
+        this.renderAll();
+      },
+
+      computeRenderKey() {
+        const keys = Object.keys(this.data.activeByBed).sort();
+        const parts = [
+          'A:' + keys.length,
+          'F:' + (this.data.selectedFilter || ''),
+          'C:' + (this.data.showCameras ? '1' : '0'),
+          'S:' + (this.data.searchQuery || '')
+        ];
+        keys.forEach(k => {
+          const ev = this.data.activeByBed[k] || {};
+          parts.push(k + ':' + (ev.event_type || ev.event || '') + ':' + (ev.system_timestamp || ''));
+        });
+        return parts.join('|');
+      },
+
+      renderAll() {
+        const key = this.computeRenderKey();
+        if (key === this.data.lastRenderKey) return;
+        this.data.lastRenderKey = key;
+
+        this.renderActiveTop();
+        this.renderBedsGrid();
+      },
+
+      matchesSearch(obj) {
+        const q = this.data.searchQuery;
+        if (!q) return true;
+
+        const hay = [
+          this.pick(obj,'bed_name','bedName'), this.pick(obj,'bed_number','bedNumber'),
+          this.pick(obj,'room_name','roomName'), this.pick(obj,'ward_name','wardName'),
+          this.pick(obj,'floor_name','floorName'), this.pick(obj,'event_type','eventType','event')
+        ].join(' ').toLowerCase();
+
+        return hay.includes(q);
+      },
+
+      renderActiveTop() {
+        const activeGrid = document.getElementById('active-grid');
+        const activeCountEl = document.getElementById('active-count');
+
+        let activeList = Object.values(this.data.activeByBed);
+        activeList = activeList.filter(ev => this.matchesSearch(ev));
+
+        activeList.sort((a,b) => {
+          const at = this.parseTs(a.system_timestamp)?.getTime() || 0;
+          const bt = this.parseTs(b.system_timestamp)?.getTime() || 0;
+          return bt - at;
+        });
+
+        activeCountEl.textContent = `${activeList.length} Active`;
+
+        if (activeList.length === 0) {
+          activeGrid.innerHTML = `<div class="empty">No active calls</div>`;
+          return;
+        }
+
+        activeGrid.innerHTML = activeList.map(ev => this.cardHtml(ev)).join('');
+      },
+
+      renderBedsGrid() {
+        const grid = document.getElementById('beds-grid');
+
+        if (!this.data.beds || this.data.beds.length === 0) {
+          grid.innerHTML = `<div class="empty">No beds found. Add beds in Config.</div>`;
+          return;
+        }
+
+        let list = this.data.beds.map(b => {
+          const ev = this.data.activeByBed[String(b.id)] || null;
+          return { bed: b, ev };
+        });
+
+        list = list.filter(x => this.matchesSearch(x.ev || x.bed));
+
+        const f = (this.data.selectedFilter || '').toLowerCase();
+        if (f) {
+          if (f === 'idle') list = list.filter(x => !x.ev);
+          else list = list.filter(x => x.ev && ((x.ev.event_type || x.ev.event || '').toLowerCase() === f));
+        }
+
+        list.sort((a,b) => (b.ev ? 1 : 0) - (a.ev ? 1 : 0));
+
+        grid.innerHTML = list.map(x => x.ev ? this.cardHtml(x.ev) : this.idleCardHtml(x.bed)).join('');
+      },
+
+      cardHtml(call) {
+        // event_type is normalized, but keep fallbacks
+        const eventType = call.event_type || call.eventType || call.event || 'Unknown';
+        const color = this.getEventColor(eventType);
+        const soft = this.hexToRgba(color, 0.14);
+
+        const ts = call.system_timestamp || call.systemTimestamp || '';
+        const timeAgo = this.getTimeAgo(ts);
+
+        const title = call.bed_name || call.bedName || ('Bed ' + (call.bed_number || call.bedNumber || 'N/A'));
+        const subtitle = call.room_name || call.roomName || 'Room';
+
+        const floor = call.floor_name || call.floorName || '—';
+        const ward  = call.ward_name  || call.wardName  || '—';
+
+        const camAvail = !!(call.camera_available ?? call.cameraAvailable);
+        const camSrc = (this.data.showCameras && camAvail) ? this.getCameraSrc(call) : '';
+
+        return `
+          <div class="card" style="--ev:${color};--evSoft:${soft};">
+            <div class="cardTop">
+              <div class="cardTitle">
+                <div class="iconBox">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M6.6 10.8c1.7 3.3 3.9 5.5 7.2 7.2l2.4-2.4c.3-.3.8-.4 1.2-.3 1.3.4 2.7.7 4.1.7.7 0 1.2.5 1.2 1.2V21c0 .7-.5 1.2-1.2 1.2C10.7 22.2 1.8 13.3 1.8 2.7 1.8 2 2.3 1.5 3 1.5h3.9c.7 0 1.2.5 1.2 1.2 0 1.4.2 2.8.7 4.1.1.4 0 .9-.3 1.2L6.6 10.8z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="t1">${this.escapeHtml(title)}</p>
+                  <p class="t2">${this.escapeHtml(subtitle)}</p>
+                </div>
+              </div>
+
+              <div class="badge">
+                <span class="miniDot"></span>
+                ${this.escapeHtml(eventType)}
+              </div>
+            </div>
+
+            <div class="meta">
+              <div>
+                <div class="k">FLOOR</div>
+                <div class="v">${this.escapeHtml(floor)}</div>
+              </div>
+              <div>
+                <div class="k">WARD</div>
+                <div class="v">${this.escapeHtml(ward)}</div>
+              </div>
+              <div>
+                <div class="k">TIME</div>
+                <div class="v js-time" data-ts="${ts}">${timeAgo}</div>
+              </div>
+              <div>
+                <div class="k">STATUS</div>
+                <div class="v">Active</div>
+              </div>
+            </div>
+
+            ${this.data.showCameras ? (
+              camAvail ? `
+                <div class="camera">
+                  <img src="${camSrc}"
+                       loading="lazy"
+                       decoding="async"
+                       onerror="this.outerHTML='<div class=&quot;camPlaceholder&quot;>❌ Camera not reachable</div>'" />
+                </div>
+              ` : `
+                <div class="camera"><div class="camPlaceholder">No camera available</div></div>
+              `
+            ) : ''}
+          </div>
+        `;
+      },
+
+      idleCardHtml(bed) {
+        const title = bed.bed_name || ('Bed ' + (bed.bed_number || 'N/A'));
+        const subtitle = bed.room_name || 'Room';
+
+        const floor = bed.floor_name || '—';
+        const ward  = bed.ward_name  || '—';
+
+        return `
+          <div class="card" style="--ev:rgba(100,116,139,.55);--evSoft:rgba(100,116,139,.10);">
+            <div class="cardTop">
+              <div class="cardTitle">
+                <div class="iconBox" style="color:rgba(100,116,139,.9);background:rgba(100,116,139,.10);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M6 7a2 2 0 012-2h8a2 2 0 012 2v12H6V7zm2-4h8v2H8V3z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="t1">${this.escapeHtml(title)}</p>
+                  <p class="t2">${this.escapeHtml(subtitle)}</p>
+                </div>
+              </div>
+
+              <div class="badge" style="color:rgba(100,116,139,.95);background:rgba(100,116,139,.10);">
+                <span class="miniDot" style="background:rgba(100,116,139,.85);"></span>
+                Idle
+              </div>
+            </div>
+
+            <div class="meta">
+              <div>
+                <div class="k">FLOOR</div>
+                <div class="v">${this.escapeHtml(floor)}</div>
+              </div>
+              <div>
+                <div class="k">WARD</div>
+                <div class="v">${this.escapeHtml(ward)}</div>
+              </div>
+              <div>
+                <div class="k">TIME</div>
+                <div class="v">—</div>
+              </div>
+              <div>
+                <div class="k">STATUS</div>
+                <div class="v">Idle</div>
+              </div>
+            </div>
+          </div>
+        `;
       },
 
       getCameraSrc(call) {
-        if (call.camera_url) return call.camera_url;
-        if (call.room_name) return `/camera/${encodeURIComponent(call.room_name)}`;
+        const cu = call.camera_url || call.cameraUrl;
+        if (cu) return cu;
+
+        const rn = call.room_name || call.roomName;
+        if (rn) return `/camera/${encodeURIComponent(rn)}`;
         return '';
-      },
-
-      makeRenderKey(list) {
-        return list.map(c => `${c.call_session_id || c.id}:${c.id}:${c.event_type}:${c.status}`)
-                   .join('|') + `|f=${this.data.selectedFilter}|cam=${this.data.showCameras}`;
-      },
-
-      renderCalls() {
-        const grid = document.getElementById('calls-grid');
-        const calls = Object.values(this.data.calls);
-
-        const filtered = this.data.selectedFilter
-          ? calls.filter(c => (c.event_type || c.event || '').toLowerCase() === this.data.selectedFilter.toLowerCase())
-          : calls;
-
-        const renderKey = this.makeRenderKey(filtered);
-
-        if (this.data.showCameras && renderKey === this.data.lastRenderKey) {
-          this.updateTimeLabels();
-          return;
-        }
-        this.data.lastRenderKey = renderKey;
-
-        if (filtered.length === 0) {
-          grid.innerHTML = `<div class="empty">${this.data.selectedFilter ? 'No calls of this type' : 'No active calls'}</div>`;
-          return;
-        }
-
-        grid.innerHTML = filtered.map(call => {
-          const eventType = call.event_type || call.event || 'Unknown';
-          const color = this.getEventColor(eventType);
-          const bgColor = this.adjustBrightness(color, 20);
-          const ts = call.system_timestamp || '';
-          const timeAgo = this.getTimeAgo(ts);
-
-          const camSrc = (this.data.showCameras && call.camera_available) ? this.getCameraSrc(call) : '';
-          const camLive = !!call.camera_live;
-
-          return `
-            <div class="call-card" style="border-color:${color};">
-              <div class="row">
-                <div>
-                  <div class="room-name">${call.bed_name || ('Bed ' + (call.bed_number || 'N/A'))}</div>
-                  <div class="bed-name">${call.room_name || 'Room'}</div>
-                </div>
-                <div class="badge" style="border-color:${bgColor}; color:${color}; background:${this.adjustBrightness(color, 55)};">
-                  ${call.status || 'active'}
-                </div>
-              </div>
-
-              ${this.data.showCameras ? `
-                <div class="camera-feed">
-                  <div class="cam-overlay ${camLive ? 'cam-live' : 'cam-off'}">
-                    ${camLive ? 'LIVE' : 'CONNECTING'}
-                  </div>
-                  ${call.camera_available ? `
-                    <img src="${camSrc}" alt="Camera Stream"
-                      onerror="this.outerHTML='<div style=&quot;width:100%;height:100%;display:grid;place-items:center;color:rgba(229,231,235,0.8);font-weight:900;&quot;>❌ CAMERA NOT REACHABLE</div>'" />
-                  ` : `
-                    <div style="width:100%;height:100%;display:grid;place-items:center;color:rgba(229,231,235,0.7);font-weight:900;">
-                      NO CAMERA FOR THIS ROOM
-                    </div>
-                  `}
-                </div>
-              ` : ''}
-
-              <div class="metaRow">
-                <div class="meta">
-                  <div class="label">Floor</div>
-                  <div class="value">${call.floor_name || '-'}</div>
-                </div>
-                <div class="meta">
-                  <div class="label">Ward</div>
-                  <div class="value">${call.ward_name || '-'}</div>
-                </div>
-                <div class="meta">
-                  <div class="label">Event</div>
-                  <div class="value">${eventType}</div>
-                </div>
-                <div class="meta">
-                  <div class="label">Time</div>
-                  <div class="value js-time" data-ts="${ts}">${timeAgo}</div>
-                </div>
-              </div>
-
-              <span class="event-badge"
-                    style="background:${this.adjustBrightness(color,50)}; color:${color};">
-                ${eventType}
-              </span>
-            </div>
-          `;
-        }).join('');
       },
 
       updateTimeLabels() {
@@ -458,7 +958,7 @@
       },
 
       getEventColor(eventType) {
-        const normalized = (eventType || '').toLowerCase();
+        const normalized = (eventType || '').toLowerCase().trim();
         return this.data.customColors[normalized] || this.getDefaultColor(normalized);
       },
 
@@ -471,25 +971,32 @@
           accept: '#10b981',
           cancel: '#6b7280',
           presence: '#06b6d4',
-          reset: '#64748b'
+          present: '#06b6d4',   // NEW: Present supported
+          reset: '#64748b',
+          unknown: '#64748b'
         };
-        return defaults[t] || '#6b7280';
+        return defaults[t] || '#3b82f6';
       },
 
-      adjustBrightness(color, percent) {
-        const num = parseInt(color.replace('#', ''), 16);
-        const amt = Math.round(2.55 * percent);
-        const R = Math.min(255, (num >> 16) + amt);
-        const G = Math.min(255, ((num >> 8) & 0x00FF) + amt);
-        const B = Math.min(255, (num & 0x0000FF) + amt);
-        return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+      hexToRgba(hex, a) {
+        const h = String(hex || '').replace('#','');
+        if (h.length !== 6) return `rgba(79,70,229,${a})`;
+        const r = parseInt(h.slice(0,2),16);
+        const g = parseInt(h.slice(2,4),16);
+        const b = parseInt(h.slice(4,6),16);
+        return `rgba(${r},${g},${b},${a})`;
+      },
+
+      parseTs(timestamp) {
+        if (!timestamp) return null;
+        const ts = String(timestamp).includes('T') ? String(timestamp) : String(timestamp).replace(' ', 'T');
+        const d = new Date(ts);
+        return isNaN(d.getTime()) ? null : d;
       },
 
       getTimeAgo(timestamp) {
-        if (!timestamp) return '—';
-        const ts = timestamp.includes('T') ? timestamp : timestamp.replace(' ', 'T');
-        const timeObj = new Date(ts);
-        if (isNaN(timeObj.getTime())) return '—';
+        const timeObj = this.parseTs(timestamp);
+        if (!timeObj) return '—';
 
         const now = new Date();
         const seconds = Math.floor((now - timeObj) / 1000);
@@ -505,45 +1012,54 @@
           const response = await fetch('/api/config/colors');
           const data = await response.json();
           const arr = data.colors || data || [];
-          const types = [...new Set(arr.map(c => c.event_type).filter(Boolean))];
+          const types = [...new Set(
+            (Array.isArray(arr) ? arr : []).map(c => (this.pick(c,'event_type','eventType') || '').toLowerCase().trim()).filter(Boolean)
+          )];
 
           const select = document.getElementById('filter-event-type');
+          const existing = new Set([...select.options].map(o => o.value));
           types.forEach(type => {
+            if (existing.has(type)) return;
             const option = document.createElement('option');
-            option.value = type.toLowerCase();
-            option.textContent = type;
+            option.value = type;
+            option.textContent = type.toUpperCase();
             select.appendChild(option);
           });
 
-          select.addEventListener('change', (e) => {
-            this.data.selectedFilter = e.target.value;
-            this.data.lastRenderKey = '';
-            this.renderCalls();
+          // Also ensure common types appear even if not in colors config
+          ['call','assistance','emergency','present','presence','reset'].forEach(t => {
+            if (existing.has(t)) return;
+            const option = document.createElement('option');
+            option.value = t;
+            option.textContent = t.toUpperCase();
+            select.appendChild(option);
           });
+
         } catch (e) {
-          console.error("[v0] filter error:", e);
+          console.error("[calls] filter error:", e);
         }
       },
 
       toggleShowCameras() {
         this.data.showCameras = !this.data.showCameras;
-        const text = document.getElementById('camera-toggle-text');
-        text.textContent = this.data.showCameras ? 'Hide Cameras' : 'Show Cameras';
-        this.data.lastRenderKey = '';
-        this.renderCalls();
+        document.getElementById('camera-toggle-text').textContent =
+          this.data.showCameras ? 'Hide Cameras' : 'Show Cameras (Active Only)';
+        this.forceRender();
       },
 
       toggleAutoRefresh() {
         this.data.autoRefresh = !this.data.autoRefresh;
-        const btn = document.getElementById('auto-refresh-btn');
-        const text = document.getElementById('auto-refresh-text');
-        if (this.data.autoRefresh) {
-          btn.classList.add('pillOn');
-          text.textContent = 'Auto Refresh: ON';
-        } else {
-          btn.classList.remove('pillOn');
-          text.textContent = 'Auto Refresh: OFF';
-        }
+        document.getElementById('auto-refresh-text').textContent =
+          this.data.autoRefresh ? 'Auto Refresh: ON' : 'Auto Refresh: OFF';
+      },
+
+      escapeHtml(s) {
+        return String(s || '')
+          .replaceAll('&','&amp;')
+          .replaceAll('<','&lt;')
+          .replaceAll('>','&gt;')
+          .replaceAll('"','&quot;')
+          .replaceAll("'","&#039;");
       }
     };
 

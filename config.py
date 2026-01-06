@@ -35,3 +35,25 @@ class Config:
 
     # ---------- TIMEZONE ----------
     TIMEZONE = "Asia/Karachi"
+        # ---------- BED -> INTERCOM DEFAULT MAPPING ----------
+    # room_name (DB) ke basis par bed_name + intercom_ip auto set ho jayega
+    DEFAULT_BED_INTERCOM_SETUP = [
+        {
+            "room_name": "G1 RES RN2",
+            "bed_name": "G1 RES RN 02",
+            "intercom_ip": "192.168.1.11",
+        },
+        {
+            "room_name": "VIP ROOM 1",
+            "bed_name": "VIP ROOM 01",
+            "intercom_ip": "192.168.1.12",
+        },
+    ]
+        # Room/system IP -> Intercom IP mapping
+    # (Room name kuch bhi ho, system_ip stable hota hai)
+    INTERCOM_IP_BY_ROOM_SYSTEM_IP = {
+        "192.168.1.11": "192.168.1.11",
+        "192.168.1.12": "192.168.1.12",
+    }
+
+

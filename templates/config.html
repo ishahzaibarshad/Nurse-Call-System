@@ -1,1333 +1,1076 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>System Configuration - Hospital Monitoring</title>
-    <!-- Removed Vue.js import as we're using vanilla JavaScript -->
-    <link href="../static/css/output.css" rel="stylesheet">
-    <link rel="manifest" href="/static/manifest.json">
-    <style>
-        @font-face {
-            font-family: 'Inter';
-            src: url('/static/fonts/inter-regular.woff2') format('woff2'),
-                url('/static/fonts/inter-regular.woff') format('woff');
-            font-weight: 400;
-            font-style: normal;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>System Configuration - Hospital Monitoring</title>
 
-        @font-face {
-            font-family: 'Inter';
-            src: url('/static/fonts/inter-medium.woff2') format('woff2'),
-                url('/static/fonts/inter-medium.woff') format('woff');
-            font-weight: 500;
-            font-style: normal;
-        }
+  <!-- Keep your existing css -->
+  <link href="/static/css/output.css" rel="stylesheet">
 
-        @font-face {
-            font-family: 'Inter';
-            src: url('/static/fonts/inter-semibold.woff2') format('woff2'),
-                url('/static/fonts/inter-semibold.woff') format('woff');
-            font-weight: 600;
-            font-style: normal;
-        }
+  <!-- Beautiful UI fallback CSS (works even if tailwind not applied) -->
+  <style>
+    :root{
+      --bg1:#f6f7ff;
+      --bg2:#f3fbff;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#e2e8f0;
+      --shadow: 0 10px 30px rgba(15,23,42,.08);
+      --shadow2: 0 12px 50px rgba(15,23,42,.10);
+      --primary:#0f172a;
+      --accent:#4f46e5;
+      --accent2:#06b6d4;
+      --danger:#ef4444;
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --radius:18px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 15% 10%, rgba(79,70,229,.12), transparent 55%),
+        radial-gradient(1200px 600px at 85% 0%, rgba(6,182,212,.10), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      min-height: 100vh;
+    }
 
-        @font-face {
-            font-family: 'Inter';
-            src: url('/static/fonts/inter-bold.woff2') format('woff2'),
-                url('/static/fonts/inter-bold.woff') format('woff');
-            font-weight: 700;
-            font-style: normal;
-        }
+    .layout{
+      display:flex;
+      min-height:100vh;
+      width:100%;
+    }
+    .sidebar{
+      width: 260px;
+      padding: 18px;
+      display:none;
+    }
+    .sidebar .shell{
+      height: calc(100vh - 36px);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: var(--radius);
+      background: rgba(15,23,42,.92);
+      box-shadow: var(--shadow2);
+      overflow:auto;
+    }
+    .sidebar .shell *{ color:#fff; }
+    @media (min-width: 1024px){
+      .sidebar{ display:block; }
+    }
 
-        * {
-            font-family: 'Inter', sans-serif;
-        }
+    .main{
+      flex:1;
+      padding: 22px;
+    }
+    .container{
+      max-width: 1180px;
+      margin: 0 auto;
+    }
 
-        @media (max-width: 768px) {
-            .flex.h-screen {
-                flex-direction: column;
-            }
+    .topbar{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom: 16px;
+    }
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .title h1{
+      margin:0;
+      font-size: 26px;
+      letter-spacing: -0.02em;
+    }
+    .title p{
+      margin:0;
+      color:var(--muted);
+      font-size: 13px;
+    }
 
-            .w-20 {
-                width: auto;
-                height: auto;
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-                padding: 12px;
-                border-bottom: 1px solid #e5e7eb;
-            }
+    .actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap: wrap;
+      justify-content:flex-end;
+    }
 
-            .w-20 nav {
-                display: flex;
-                flex-direction: row;
-                gap: 8px;
-            }
+    .chipRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin: 14px 0 18px;
+    }
 
-            .w-20 .space-y-4 {
-                display: flex;
-                gap: 8px;
-            }
-        }
+    .tabs{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      padding: 10px;
+      background: rgba(255,255,255,.75);
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: 999px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 25px rgba(15,23,42,.06);
+    }
+    .tabBtn{
+      border:1px solid rgba(226,232,240,1);
+      background: #fff;
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 999px;
+      cursor:pointer;
+      font-weight:600;
+      font-size: 13px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      transition: all .18s ease;
+      user-select:none;
+    }
+    .tabBtn:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px rgba(15,23,42,.08);
+      border-color: rgba(79,70,229,.35);
+    }
+    .tabBtn.active{
+      background: linear-gradient(135deg, rgba(79,70,229,1), rgba(6,182,212,1));
+      color:#fff;
+      border-color: transparent;
+      box-shadow: 0 15px 40px rgba(79,70,229,.25);
+    }
+    .countPill{
+      font-size: 12px;
+      padding: 2px 9px;
+      border-radius: 999px;
+      background: rgba(15,23,42,.06);
+      color: var(--text);
+      font-weight: 700;
+    }
+    .tabBtn.active .countPill{
+      background: rgba(255,255,255,.22);
+      color:#fff;
+    }
 
-        @media (max-width: 640px) {
-            .flex.space-x-2.border-b {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
+    .card{
+      background: rgba(255,255,255,.82);
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+    .cardHead{
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(226,232,240,.9);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap: wrap;
+    }
+    .cardHead h3{
+      margin:0;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+    }
+    .cardHead .sub{
+      margin-top:4px;
+      color:var(--muted);
+      font-size: 12px;
+    }
+    .cardBody{
+      padding: 14px 14px 16px;
+    }
 
-            .flex.space-x-2.border-b button {
-                white-space: nowrap;
-                flex-shrink: 0;
-            }
-        }
+    .gridTop{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 12px;
+      align-items:center;
+      margin-bottom: 12px;
+    }
+    @media(max-width: 860px){
+      .gridTop{ grid-template-columns: 1fr; }
+    }
 
-        @media (max-width: 1024px) {
-            .grid.grid-cols-3 {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
+    .input{
+      width:100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(226,232,240,1);
+      outline:none;
+      font-size: 14px;
+      background:#fff;
+      transition: all .15s ease;
+    }
+    .input:focus{
+      border-color: rgba(79,70,229,.6);
+      box-shadow: 0 0 0 4px rgba(79,70,229,.12);
+    }
 
-        @media (max-width: 768px) {
-            .grid.grid-cols-3 {
-                grid-template-columns: 1fr;
-            }
+    .btn{
+      border:1px solid rgba(226,232,240,1);
+      background:#fff;
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight:700;
+      font-size: 13px;
+      transition: all .18s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 22px rgba(15,23,42,.08); }
+    .btnPrimary{
+      background: linear-gradient(135deg, rgba(15,23,42,1), rgba(79,70,229,1));
+      color:#fff;
+      border-color: transparent;
+    }
+    .btnDanger{
+      background: rgba(239,68,68,.08);
+      border-color: rgba(239,68,68,.25);
+      color: #b91c1c;
+    }
+    .btnGhost{
+      background: rgba(15,23,42,.04);
+      border-color: rgba(15,23,42,.08);
+    }
 
-            .grid.grid-cols-1.md\:grid-cols-2.lg\:grid-cols-3 {
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            }
-        }
+    .tableWrap{
+      overflow:auto;
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: 16px;
+      background:#fff;
+    }
+    table{
+      width:100%;
+      border-collapse: separate;
+      border-spacing:0;
+      min-width: 780px;
+      font-size: 13px;
+    }
+    thead th{
+      position: sticky;
+      top:0;
+      z-index:2;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      color: var(--muted);
+      font-weight: 800;
+      text-align:left;
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(226,232,240,1);
+      white-space: nowrap;
+    }
+    tbody td{
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(226,232,240,.75);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    tbody tr:hover{
+      background: rgba(79,70,229,.06);
+    }
+    tbody tr:last-child td{ border-bottom: 0; }
 
-        @media (max-width: 640px) {
-            .grid.grid-cols-1.md\:grid-cols-2.lg\:grid-cols-3 {
-                grid-template-columns: 1fr;
-            }
-        }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 12px;
+      border: 1px solid rgba(226,232,240,1);
+      background: rgba(15,23,42,.04);
+    }
+    .bOk{ background: rgba(34,197,94,.10); border-color: rgba(34,197,94,.25); color: #166534; }
+    .bWarn{ background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.30); color: #92400e; }
+    .bOff{ background: rgba(100,116,139,.12); border-color: rgba(100,116,139,.22); color: #334155; }
 
-        @media (max-width: 640px) {
-            .w-full.max-w-md {
-                max-width: 100%;
-                margin: 16px;
-            }
+    /* Toast */
+    #toast{
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      max-width: 420px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(15,23,42,.92);
+      color: #fff;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.14);
+      display:none;
+      animation: pop .18s ease;
+    }
+    @keyframes pop{
+      from{ transform: translateY(10px); opacity:.5; }
+      to{ transform: translateY(0); opacity:1; }
+    }
 
-            .fixed.inset-0 {
-                padding: 16px;
-            }
+    /* Modal */
+    #modalWrap{
+      position: fixed;
+      inset:0;
+      background: rgba(2,6,23,.48);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+    }
+    .modal{
+      width: min(760px, 100%);
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: 22px;
+      box-shadow: 0 30px 90px rgba(15,23,42,.22);
+      backdrop-filter: blur(12px);
+      overflow:hidden;
+      animation: pop .16s ease;
+    }
+    .modalHead{
+      padding: 16px 18px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      border-bottom: 1px solid rgba(226,232,240,.9);
+    }
+    .modalHead h2{
+      margin:0;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+    }
+    .modalBody{ padding: 16px 18px 4px; }
+    .modalGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media(max-width: 720px){
+      .modalGrid{ grid-template-columns: 1fr; }
+    }
+    .field label{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 800;
+    }
+    .field input, .field select{
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(226,232,240,1);
+      outline:none;
+      background:#fff;
+    }
+    .field input:focus, .field select:focus{
+      border-color: rgba(79,70,229,.6);
+      box-shadow: 0 0 0 4px rgba(79,70,229,.12);
+    }
+    .modalFoot{
+      padding: 14px 18px 16px;
+      display:flex;
+      justify-content:flex-end;
+      gap: 10px;
+      border-top: 1px solid rgba(226,232,240,.9);
+    }
 
-            .p-6 {
-                padding: 20px;
-            }
-        }
+    .mutedSmall{ color: var(--muted); font-size: 12px; }
 
-        @media (max-width: 640px) {
+    .empty{
+      padding: 22px;
+      text-align:center;
+      color: var(--muted);
+    }
+    .empty strong{ color: var(--text); }
 
-            input,
-            select,
-            textarea {
-                font-size: 16px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .w-10.h-10 {
-                display: none;
-            }
-        }
-    </style>
+    .icon{
+      width: 16px; height:16px; display:inline-block;
+    }
+  </style>
 </head>
 
 <body>
-    <!-- Removed Vue #app element, using plain HTML structure -->
-    <div class="flex h-screen">
-        <!-- Sidebar -->
-        <!-- Reusable Sidebar Component -->
-        <div class="w-20 bg-slate-800 flex flex-col items-center py-6 space-y-8">
-            <!-- Logo -->
-            <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
-                <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                        d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                </svg>
-            </div>
+  <div class="layout">
+    <!-- Sidebar (optional) -->
+    <aside class="sidebar">
+      <div id="sidebar" class="shell"></div>
+    </aside>
 
-            <!-- Nav Items -->
-            <nav class="flex-1 flex flex-col space-y-4">
-                <a href="/" data-nav="dashboard"
-                    class="sidebar-item flex flex-col items-center py-3 px-4 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                    </svg>
-                    <span class="text-xs mt-1">Dashboard</span>
-                </a>
+    <main class="main">
+      <div class="container">
 
-                <a href="/calls" data-nav="calls"
-                    class="sidebar-item flex flex-col items-center py-3 px-4 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                        <path
-                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    <span class="text-xs mt-1">Calls</span>
-                </a>
+        <!-- Top -->
+        <div class="topbar">
+          <div class="title">
+            <h1>System Configuration</h1>
+            <p>Manage Floors • Wards • Rooms • Beds • Colors (fast edit + clean UI)</p>
+          </div>
 
-                <a href="/history" data-nav="history"
-                    class="sidebar-item flex flex-col items-center py-3 px-4 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span class="text-xs mt-1">History</span>
-                </a>
-
-                <a href="/config" data-nav="config"
-                    class="sidebar-item flex flex-col items-center py-3 px-4 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span class="text-xs mt-1">Config</span>
-                </a>
-            </nav>
-
-            <!-- User Avatar -->
-            <div class="w-10 h-10 bg-gray-600 rounded-full overflow-hidden">
-                <img src="https://ui-avatars.com/api/?name=Admin&background=4b5563&color=fff" alt="User"
-                    class="w-full h-full object-cover">
-            </div>
+          <div class="actions">
+            <input id="searchInput" class="input" style="max-width: 320px;" placeholder="Search in current tab..." />
+            <button id="refreshBtn" class="btn btnPrimary" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none">
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M21 3v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              Refresh
+            </button>
+          </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="flex-1 flex flex-col overflow-hidden">
-            <header class="bg-white border-b px-8 py-4">
-                <h1 class="text-2xl font-semibold text-gray-900">System Configuration</h1>
-            </header>
-
-            <div class="flex-1 overflow-y-auto p-8">
-                <!-- Replaced Vue tabs with vanilla JS controlled tabs -->
-                <!-- Tabs Navigation -->
-                <div class="flex space-x-2 mb-6 border-b">
-                    <!-- Added 'this' parameter to switchTab calls to pass the button element -->
-                    <button
-                        class="tab-btn px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-blue-600 transition"
-                        onclick="switchTab('floors', this)">Floors</button>
-                    <button
-                        class="tab-btn px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-blue-600 transition"
-                        onclick="switchTab('wards', this)">Wards</button>
-                    <button
-                        class="tab-btn px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-blue-600 transition"
-                        onclick="switchTab('rooms', this)">Rooms</button>
-                    <button
-                        class="tab-btn px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-blue-600 transition"
-                        onclick="switchTab('beds', this)">Beds</button>
-                    <button
-                        class="tab-btn px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-blue-600 transition"
-                        onclick="switchTab('cameras', this)">Cameras</button>
-                    <button
-                        class="tab-btn px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-blue-600 transition"
-                        onclick="switchTab('colors', this)">Colors</button>
-                </div>
-
-                <!-- Tab Contents -->
-                <div id="tab-content">
-                    <!-- Floors Tab -->
-                    <div id="floors-tab" class="tab-content space-y-6 hidden">
-                        <div class="flex justify-between items-center">
-                            <h2 class="text-xl font-semibold">Floors</h2>
-                            <button onclick="openAddFloorModal()"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Add Floor</button>
-                        </div>
-                        <div class="bg-white rounded-lg shadow overflow-hidden">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Floor #</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Description</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Wards</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                            Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="floorsTable" class="bg-white divide-y divide-gray-200">
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Wards Tab -->
-                    <div id="wards-tab" class="tab-content space-y-6 hidden">
-                        <div class="flex justify-between items-center">
-                            <h2 class="text-xl font-semibold">Wards</h2>
-                            <button onclick="openAddWardModal()"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Add Ward</button>
-                        </div>
-                        <div class="bg-white rounded-lg shadow overflow-hidden">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Floor</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Rooms</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                            Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="wardsTable" class="bg-white divide-y divide-gray-200">
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Rooms Tab -->
-                    <div id="rooms-tab" class="tab-content space-y-6 hidden">
-                        <div class="flex justify-between items-center">
-                            <h2 class="text-xl font-semibold">Rooms</h2>
-                            <button onclick="openAddRoomModal()"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Add Room</button>
-                        </div>
-                        <div class="bg-white rounded-lg shadow overflow-hidden">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room
-                                            #</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room
-                                            Name</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ward
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Floor</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Beds
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Cameras</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                            Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="roomsTable" class="bg-white divide-y divide-gray-200">
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Beds & Devices Tab -->
-                    <div id="beds-tab" class="tab-content space-y-6 hidden">
-                        <div class="flex justify-between items-center">
-                            <h2 class="text-xl font-semibold">Beds & Intercom Devices</h2>
-                            <button onclick="openAddBedModal()"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Add Bed</button>
-                        </div>
-                        <div class="bg-white rounded-lg shadow overflow-hidden">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bed
-                                            #</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bed
-                                            Name</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ward
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Status</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Intercom ID</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP
-                                            Address</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Camera</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                            Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="bedsTable" class="bg-white divide-y divide-gray-200">
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Cameras Tab -->
-                    <div id="cameras-tab" class="tab-content space-y-6 hidden">
-                        <div class="flex justify-between items-center">
-                            <h2 class="text-xl font-semibold">Cameras</h2>
-                            <button onclick="openAddCameraModal()"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Add
-                                Camera</button>
-                        </div>
-                        <div class="bg-white rounded-lg shadow overflow-hidden">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Camera Name</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">RTSP
-                                            URL</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP
-                                            Address</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                            Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="camerasTable" class="bg-white divide-y divide-gray-200">
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Colors Tab -->
-                    <div id="colors-tab" class="tab-content space-y-6 hidden">
-                        <div class="flex justify-between items-center">
-                            <h2 class="text-xl font-semibold">Event Type Colors</h2>
-                            <div class="flex gap-2">
-                                <button onclick="openAddEventTypeModal()"
-                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Add Event
-                                    Type</button>
-                                <button onclick="resetColors()"
-                                    class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Reset to
-                                    Default</button>
-                            </div>
-                        </div>
-                        <div id="eventTypesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <!-- Tabs -->
+        <div class="tabs" id="tabs">
+          <button class="tabBtn active" data-tab="floors">Floors <span class="countPill" id="count-floors">0</span></button>
+          <button class="tabBtn" data-tab="wards">Wards <span class="countPill" id="count-wards">0</span></button>
+          <button class="tabBtn" data-tab="rooms">Rooms <span class="countPill" id="count-rooms">0</span></button>
+          <button class="tabBtn" data-tab="beds">Beds <span class="countPill" id="count-beds">0</span></button>
+          <button class="tabBtn" data-tab="colors">Colors <span class="countPill" id="count-colors">0</span></button>
         </div>
+
+        <!-- Toast -->
+        <div id="toast"></div>
+
+        <!-- Sections -->
+        <section id="sec-floors" style="margin-top:16px;"></section>
+        <section id="sec-wards" style="margin-top:16px; display:none;"></section>
+        <section id="sec-rooms" style="margin-top:16px; display:none;"></section>
+        <section id="sec-beds" style="margin-top:16px; display:none;"></section>
+        <section id="sec-colors" style="margin-top:16px; display:none;"></section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div id="modalWrap">
+    <div class="modal">
+      <div class="modalHead">
+        <h2 id="modalTitle">Modal</h2>
+        <button id="modalClose" class="btn btnGhost" type="button">✕</button>
+      </div>
+
+      <form id="modalForm">
+        <div class="modalBody">
+          <div id="modalBody" class="modalGrid"></div>
+        </div>
+        <div class="modalFoot">
+          <button type="button" id="modalCancel" class="btn">Cancel</button>
+          <button type="submit" class="btn btnPrimary">Save</button>
+        </div>
+      </form>
     </div>
+  </div>
 
-    <!-- Event Type Modal -->
-    <div id="eventTypeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-96">
-            <h3 class="text-xl font-semibold mb-4">Add/Edit Event Type</h3>
-            <div class="space-y-4">
-                <input type="text" id="eventTypeName" placeholder="Event Type Name"
-                    class="w-full px-4 py-2 border rounded-lg">
-                <input type="color" id="eventTypeColor" class="w-full px-4 py-2 border rounded-lg" value="#3b82f6">
-                <div class="flex gap-2">
-                    <button onclick="saveEventType()"
-                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
-                    <button onclick="closeEventTypeModal()"
-                        class="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                </div>
-            </div>
+<script>
+(function () {
+  const API = {
+    floors: "/api/config/floors",
+    wards: "/api/config/wards",
+    rooms: "/api/config/rooms",
+    beds: "/api/config/beds",
+    colors: "/api/config/colors",
+  };
+
+  const state = {
+    floors: [], wards: [], rooms: [], beds: [], colors: [],
+    activeTab: "floors",
+    q: ""
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+    }[c]));
+  }
+
+  function toast(msg) {
+    const el = $("toast");
+    el.textContent = msg;
+    el.style.display = "block";
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.display = "none"; }, 2600);
+  }
+
+  async function apiFetch(url, opts = {}) {
+    const o = Object.assign({ headers: {} }, opts);
+    if (o.body && typeof o.body !== "string") {
+      o.headers["Content-Type"] = "application/json";
+      o.body = JSON.stringify(o.body);
+    }
+    const res = await fetch(url, o);
+    const txt = await res.text();
+    let data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch { data = { raw: txt }; }
+    if (!res.ok) {
+      const err = (data && (data.error || data.message)) ? (data.error || data.message) : ("HTTP " + res.status);
+      throw new Error(err);
+    }
+    return data;
+  }
+
+  function badge(status) {
+    const s = String(status || "").toLowerCase();
+    if (s === "active" || s === "available") return `<span class="badge bOk">${esc(status)}</span>`;
+    if (s === "inactive") return `<span class="badge bOff">${esc(status)}</span>`;
+    return `<span class="badge bWarn">${esc(status || "unknown")}</span>`;
+  }
+
+  function setCounts() {
+    $("count-floors").textContent = state.floors.length;
+    $("count-wards").textContent  = state.wards.length;
+    $("count-rooms").textContent  = state.rooms.length;
+    $("count-beds").textContent   = state.beds.length;
+    $("count-colors").textContent = state.colors.length;
+  }
+
+  function setTab(tab) {
+    state.activeTab = tab;
+    document.querySelectorAll(".tabBtn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+
+    ["floors","wards","rooms","beds","colors"].forEach(t => {
+      $("sec-" + t).style.display = (t === tab) ? "block" : "none";
+    });
+
+    renderActive();
+  }
+
+  function filterList(list, fields) {
+    const q = (state.q || "").trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(it => fields.some(f => String(it?.[f] ?? "").toLowerCase().includes(q)));
+  }
+
+  async function provideSidebar() {
+    try {
+      const r = await fetch("/sidebar.html");
+      if (!r.ok) return;
+      $("sidebar").innerHTML = await r.text();
+    } catch {}
+  }
+
+  async function loadAll() {
+    const [floors, wards, rooms, beds, colors] = await Promise.all([
+      apiFetch(API.floors),
+      apiFetch(API.wards),
+      apiFetch(API.rooms),
+      apiFetch(API.beds),
+      apiFetch(API.colors),
+    ]);
+
+    state.floors = floors.floors || [];
+    state.wards  = wards.wards || [];
+    state.rooms  = rooms.rooms || [];
+    state.beds   = beds.beds || [];
+    state.colors = colors.colors || [];
+
+    setCounts();
+    renderActive();
+  }
+
+  function shellCard(title, sub, addAction, headHtml, bodyHtml, emptyCols) {
+    return `
+      <div class="card">
+        <div class="cardHead">
+          <div>
+            <h3>${esc(title)}</h3>
+            <div class="sub">${esc(sub)}</div>
+          </div>
+
+          <button class="btn btnPrimary" data-action="${esc(addAction)}" type="button">
+            <svg class="icon" viewBox="0 0 24 24" fill="none">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Add
+          </button>
         </div>
-    </div>
 
-    <!-- Floor Modal -->
-    <div id="floorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-96">
-            <h3 class="text-xl font-semibold mb-4" id="floorModalTitle">Add Floor</h3>
-            <div class="space-y-4">
-                <input type="text" id="floorName" placeholder="Floor Name" class="w-full px-4 py-2 border rounded-lg">
-                <input type="number" id="floorNumber" placeholder="Floor Number"
-                    class="w-full px-4 py-2 border rounded-lg">
-                <textarea id="floorDescription" placeholder="Description" class="w-full px-4 py-2 border rounded-lg"
-                    rows="3"></textarea>
-                <div class="flex gap-2">
-                    <button onclick="saveFloor()"
-                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
-                    <button onclick="closeFloorModal()"
-                        class="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                </div>
-            </div>
+        <div class="cardBody">
+          <div class="tableWrap">
+            <table>
+              <thead><tr>${headHtml}</tr></thead>
+              <tbody>
+                ${bodyHtml || `<tr><td colspan="${emptyCols}" class="empty"><strong>No data</strong><div class="mutedSmall">Add a new record to get started.</div></td></tr>`}
+              </tbody>
+            </table>
+          </div>
         </div>
-    </div>
+      </div>
+    `;
+  }
 
-    <!-- Ward Modal -->
-    <div id="wardModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-96">
-            <h3 class="text-xl font-semibold mb-4" id="wardModalTitle">Add Ward</h3>
-            <div class="space-y-4">
-                <input type="text" id="wardName" placeholder="Ward Name" class="w-full px-4 py-2 border rounded-lg">
-                <select id="wardFloor" class="w-full px-4 py-2 border rounded-lg">
-                    <option value="">Select Floor</option>
-                </select>
-                <select id="wardType" class="w-full px-4 py-2 border rounded-lg">
-                    <option value="">Select Ward Type</option>
-                    <option value="General">General</option>
-                    <option value="ICU">ICU</option>
-                    <option value="Emergency">Emergency</option>
-                    <option value="Pediatrics">Pediatrics</option>
-                    <option value="Maternity">Maternity</option>
-                </select>
-                <div class="flex gap-2">
-                    <button onclick="saveWard()"
-                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
-                    <button onclick="closeWardModal()"
-                        class="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                </div>
-            </div>
+  function renderFloors() {
+    const items = filterList(state.floors, ["name","status","floor_number","floorNumber","description"]);
+    const rows = items.map(f => `
+      <tr>
+        <td><strong>${esc(f.name)}</strong></td>
+        <td>${esc(f.floor_number ?? f.floorNumber ?? "")}</td>
+        <td>${badge(f.status)}</td>
+        <td>${esc(f.wards ?? 0)}</td>
+        <td>
+          <button class="btn" data-action="edit-floor" data-id="${esc(f.id)}" type="button">Edit</button>
+          <button class="btn btnDanger" data-action="del-floor" data-id="${esc(f.id)}" type="button">Delete</button>
+        </td>
+      </tr>
+    `).join("");
+
+    $("sec-floors").innerHTML = shellCard(
+      "Floors",
+      "Create floors, set status and manage structure.",
+      "add-floor",
+      `<th>Name</th><th>No</th><th>Status</th><th>Wards</th><th>Actions</th>`,
+      rows,
+      5
+    );
+  }
+
+  function renderWards() {
+    const floorNameById = Object.fromEntries(state.floors.map(f => [String(f.id), f.name]));
+    const items = filterList(state.wards, ["name","ward_type","wardType","type","status","description"]);
+    const rows = items.map(w => `
+      <tr>
+        <td><strong>${esc(w.name)}</strong></td>
+        <td>${esc(floorNameById[String(w.floor_id ?? w.floorId)] || (w.floor_id ?? w.floorId ?? ""))}</td>
+        <td>${esc(w.ward_type || w.wardType || w.type || "")}</td>
+        <td>${badge(w.status)}</td>
+        <td>${esc(w.rooms ?? 0)}</td>
+        <td>
+          <button class="btn" data-action="edit-ward" data-id="${esc(w.id)}" type="button">Edit</button>
+          <button class="btn btnDanger" data-action="del-ward" data-id="${esc(w.id)}" type="button">Delete</button>
+        </td>
+      </tr>
+    `).join("");
+
+    $("sec-wards").innerHTML = shellCard(
+      "Wards",
+      "Assign wards to floors and maintain type/status.",
+      "add-ward",
+      `<th>Name</th><th>Floor</th><th>Type</th><th>Status</th><th>Rooms</th><th>Actions</th>`,
+      rows,
+      6
+    );
+  }
+
+  function renderRooms() {
+    const wardNameById = Object.fromEntries(state.wards.map(w => [String(w.id), w.name]));
+    const items = filterList(state.rooms, ["room_name","roomName","room_number","roomNumber","system_ip","systemIp","status"]);
+    const rows = items.map(r => `
+      <tr>
+        <td><strong>${esc(r.room_name || r.roomName || "")}</strong></td>
+        <td>${esc(r.room_number || r.roomNumber || "")}</td>
+        <td>${esc(wardNameById[String(r.ward_id ?? r.wardId)] || (r.ward_id ?? r.wardId ?? ""))}</td>
+        <td>${esc(r.system_ip || r.systemIp || "")}</td>
+        <td>${badge(r.status || "active")}</td>
+        <td>
+          <button class="btn" data-action="edit-room" data-id="${esc(r.id)}" type="button">Edit</button>
+          <button class="btn btnDanger" data-action="del-room" data-id="${esc(r.id)}" type="button">Delete</button>
+        </td>
+      </tr>
+    `).join("");
+
+    $("sec-rooms").innerHTML = shellCard(
+      "Rooms",
+      "Rooms belong to wards. Store room name/number and system IP.",
+      "add-room",
+      `<th>Room Name</th><th>Room No</th><th>Ward</th><th>System IP</th><th>Status</th><th>Actions</th>`,
+      rows,
+      6
+    );
+  }
+
+  function renderBeds() {
+    const roomNameById = Object.fromEntries(
+      state.rooms.map(r => [String(r.id), (r.room_name || r.roomName || r.name || "")])
+    );
+    const items = filterList(state.beds, ["bed_number","bedNumber","bedNo","bed_name","bedName","intercom_ip","ipAddress","ip_address","status","room_name","roomName"]);
+    const rows = items.map(b => `
+      <tr>
+        <td>${esc(roomNameById[String(b.room_id ?? b.roomId)] || (b.room_name || b.room_id || ""))}</td>
+        <td><strong>${esc(b.bed_number || b.bedNumber || b.bedNo || "")}</strong></td>
+        <td>${esc(b.bed_name || b.bedName || "")}</td>
+        <td>${esc(b.intercom_ip || b.ipAddress || b.ip_address || "")}</td>
+        <td>${badge(b.status || "available")}</td>
+        <td>
+          <button class="btn" data-action="edit-bed" data-id="${esc(b.id)}" type="button">Edit</button>
+          <button class="btn btnDanger" data-action="del-bed" data-id="${esc(b.id)}" type="button">Delete</button>
+        </td>
+      </tr>
+    `).join("");
+
+    $("sec-beds").innerHTML = shellCard(
+      "Beds",
+      "Beds map intercom IP to a room. Edit quickly and keep clean mapping.",
+      "add-bed",
+      `<th>Room</th><th>Bed No</th><th>Bed Name</th><th>Intercom IP</th><th>Status</th><th>Actions</th>`,
+      rows,
+      6
+    );
+  }
+
+  function renderColors() {
+    const items = filterList(state.colors, ["event_type","eventType","color"]);
+    const rows = items.map(c => `
+      <tr>
+        <td><strong>${esc(c.event_type || c.eventType || "")}</strong></td>
+        <td>${esc(c.color || "")}</td>
+        <td>
+          <button class="btn" data-action="edit-color" data-id="${esc(c.id)}" type="button">Edit</button>
+          <button class="btn btnDanger" data-action="del-color" data-id="${esc(c.id)}" type="button">Delete</button>
+        </td>
+      </tr>
+    `).join("");
+
+    $("sec-colors").innerHTML = shellCard(
+      "Colors",
+      "Define event color coding for dashboards.",
+      "add-color",
+      `<th>Event Type</th><th>Color</th><th>Actions</th>`,
+      rows,
+      3
+    );
+  }
+
+  function renderActive() {
+    if (state.activeTab === "floors") renderFloors();
+    if (state.activeTab === "wards") renderWards();
+    if (state.activeTab === "rooms") renderRooms();
+    if (state.activeTab === "beds") renderBeds();
+    if (state.activeTab === "colors") renderColors();
+  }
+
+  // ---------- Modal ----------
+  const modalWrap  = $("modalWrap");
+  const modalTitle = $("modalTitle");
+  const modalBody  = $("modalBody");
+  const modalForm  = $("modalForm");
+  let modalCtx = { entity: null, mode: null, id: null };
+
+  function openModal(entity, mode, item) {
+    modalCtx = { entity, mode, id: item?.id ?? null };
+    modalTitle.textContent = (mode === "create" ? "Add " : "Edit ") + entity.toUpperCase();
+
+    const statusSelect = (val, opts) => `
+      <div class="field">
+        <label>Status</label>
+        <select name="status">
+          ${opts.map(o => `
+            <option value="${o}" ${String(val || "").toLowerCase() === o ? "selected" : ""}>${o}</option>
+          `).join("")}
+        </select>
+      </div>
+    `;
+
+    if (entity === "floor") {
+      modalBody.innerHTML = `
+        <div class="field">
+          <label>Name</label>
+          <input name="name" value="${esc(item?.name || "")}" required>
         </div>
-    </div>
-
-    <!-- Room Modal -->
-    <div id="roomModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-96">
-            <h3 class="text-xl font-semibold mb-4" id="roomModalTitle">Add Room</h3>
-            <div class="space-y-4">
-                <input type="number" id="roomNumber" placeholder="Room Number"
-                    class="w-full px-4 py-2 border rounded-lg">
-                <input type="text" id="roomName" placeholder="Room Name" class="w-full px-4 py-2 border rounded-lg">
-                <select id="roomWard" class="w-full px-4 py-2 border rounded-lg">
-                    <option value="">Select Ward</option>
-                </select>
-                <select id="roomType" class="w-full px-4 py-2 border rounded-lg">
-                    <option value="">Select Room Type</option>
-                    <option value="Standard">Standard</option>
-                    <option value="Premium">Premium</option>
-                    <option value="ICU">ICU</option>
-                    <option value="Isolation">Isolation</option>
-                </select>
-                <div class="flex gap-2">
-                    <button onclick="saveRoom()"
-                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
-                    <button onclick="closeRoomModal()"
-                        class="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                </div>
-            </div>
+        <div class="field">
+          <label>Floor Number</label>
+          <input name="floor_number" type="number" value="${esc(item?.floor_number ?? item?.floorNumber ?? "")}" required>
         </div>
-    </div>
-
-    <!-- Bed Modal -->
-    <div id="bedModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-96 max-h-96 overflow-y-auto">
-            <h3 class="text-xl font-semibold mb-4" id="bedModalTitle">Add Bed</h3>
-            <div class="space-y-4">
-                <input type="number" id="bedNumber" placeholder="Bed Number" class="w-full px-4 py-2 border rounded-lg">
-                <input type="text" id="bedName" placeholder="Bed Name" class="w-full px-4 py-2 border rounded-lg">
-                <select id="bedRoom" class="w-full px-4 py-2 border rounded-lg">
-                    <option value="">Select Room</option>
-                </select>
-                <input type="text" id="bedIntercomId" placeholder="Intercom Device ID"
-                    class="w-full px-4 py-2 border rounded-lg">
-                <input type="text" id="bedIntercomIp" placeholder="Intercom IP Address"
-                    class="w-full px-4 py-2 border rounded-lg">
-                <select id="bedCamera" class="w-full px-4 py-2 border rounded-lg">
-                    <option value="">No Camera</option>
-                </select>
-                <select id="bedStatus" class="w-full px-4 py-2 border rounded-lg">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="maintenance">Maintenance</option>
-                </select>
-                <div class="flex gap-2">
-                    <button onclick="saveBed()"
-                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
-                    <button onclick="closeBedModal()"
-                        class="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                </div>
-            </div>
+        <div class="field">
+          <label>Description</label>
+          <input name="description" value="${esc(item?.description || "")}">
         </div>
-    </div>
+        ${statusSelect(item?.status || "active", ["active","inactive"])}
+      `;
+    }
 
-    <!-- Camera Modal -->
-    <div id="cameraModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-96">
-            <h3 class="text-xl font-semibold mb-4" id="cameraModalTitle">Add Camera</h3>
-            <div class="space-y-4">
-                <input type="text" id="cameraName" placeholder="Camera Name" class="w-full px-4 py-2 border rounded-lg">
-                <select id="cameraRoom" class="w-full px-4 py-2 border rounded-lg">
-                    <option value="">Select Room</option>
-                </select>
-                <input type="text" id="cameraRtspUrl" placeholder="RTSP URL" class="w-full px-4 py-2 border rounded-lg">
-                <input type="text" id="cameraIp" placeholder="IP Address" class="w-full px-4 py-2 border rounded-lg">
-                <div class="flex gap-2">
-                    <button onclick="saveCamera()"
-                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
-                    <button onclick="closeCameraModal()"
-                        class="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                </div>
-            </div>
+    if (entity === "ward") {
+      const floorOptions = state.floors
+        .map(f => `
+          <option value="${esc(f.id)}" ${
+            String(item?.floor_id ?? item?.floorId ?? "") === String(f.id) ? "selected" : ""
+          }>${esc(f.name)}</option>
+        `)
+        .join("");
+
+      modalBody.innerHTML = `
+        <div class="field">
+          <label>Name</label>
+          <input name="name" value="${esc(item?.name || "")}" required>
         </div>
-    </div>
+        <div class="field">
+          <label>Floor</label>
+          <select name="floor_id" required>
+            <option value="">Select</option>
+            ${floorOptions}
+          </select>
+        </div>
+        <div class="field">
+          <label>Ward Type</label>
+          <input name="ward_type" value="${esc(item?.ward_type || item?.wardType || item?.type || "")}">
+        </div>
+        <div class="field">
+          <label>Description</label>
+          <input name="description" value="${esc(item?.description || "")}">
+        </div>
+        ${statusSelect(item?.status || "active", ["active","inactive"])}
+      `;
+    }
 
-    <script>
-        // Global state
-        let state = {
-            activeTab: 'floors',
-            floors: [],
-            wards: [],
-            rooms: [],
-            beds: [],
-            cameras: [],
-            eventTypes: [],
-            editMode: {
-                floor: null,
-                ward: null,
-                room: null,
-                bed: null,
-                camera: null
-            },
-            newFloor: { floor_number: '', name: '', description: '' },
-            newWard: { floor_id: '', name: '', ward_type: 'General', description: '' },
-            newRoom: { ward_id: '', room_number: '', room_name: '', room_type: 'General', capacity: 1 },
-            newBed: { room_id: '', bed_number: '', bed_name: '', status: 'available', intercom_device_id: '', intercom_ip: '', intercom_mac: '' },
-            newCamera: { room_id: '', camera_name: '', rtsp_url: '', ip_address: '192.168.0.120', port: 80, username: 'admin', password: '', bed_id: '' }
+    // ✅ FIXED: wardOptions scope + removed extra brace + option labels
+    if (entity === "room") {
+      const wardOptions = state.wards
+        .map(w => `
+          <option value="${esc(w.id)}" ${
+            String(item?.ward_id ?? item?.wardId ?? "") === String(w.id) ? "selected" : ""
+          }>${esc(w.name)}</option>
+        `)
+        .join("");
+
+      modalBody.innerHTML = `
+        <div class="field">
+          <label>Ward</label>
+          <select name="ward_id" required>
+            <option value="">Select</option>
+            ${wardOptions}
+          </select>
+        </div>
+        <div class="field">
+          <label>Room Name</label>
+          <input name="room_name" value="${esc(item?.room_name || item?.roomName || "")}" required>
+        </div>
+        <div class="field">
+          <label>Room Number</label>
+          <input name="room_number" value="${esc(item?.room_number || item?.roomNumber || "")}">
+        </div>
+        <div class="field">
+          <label>System IP</label>
+          <input name="system_ip" value="${esc(item?.system_ip || item?.systemIp || "")}">
+        </div>
+        ${statusSelect(item?.status || "active", ["active","inactive"])}
+      `;
+    }
+
+    // ✅ FIXED: bed -> room options, correct selected field, labels, closing tags
+    if (entity === "bed") {
+      const roomOptions = state.rooms
+        .map(r => {
+          const label = (r.room_name || r.roomName || r.name || `Room ${r.id}`);
+          const selected = String(item?.room_id ?? item?.roomId ?? "") === String(r.id);
+          return `<option value="${esc(r.id)}" ${selected ? "selected" : ""}>${esc(label)}</option>`;
+        })
+        .join("");
+
+      modalBody.innerHTML = `
+        <div class="field">
+          <label>Room</label>
+          <select name="room_id" required>
+            <option value="">Select</option>
+            ${roomOptions}
+          </select>
+        </div>
+        <div class="field">
+          <label>Bed Number</label>
+          <input name="bed_number" value="${esc(item?.bed_number || item?.bedNumber || item?.bedNo || "")}" required>
+        </div>
+        <div class="field">
+          <label>Bed Name</label>
+          <input name="bed_name" value="${esc(item?.bed_name || item?.bedName || "")}">
+        </div>
+        <div class="field">
+          <label>Intercom IP</label>
+          <input name="intercom_ip" value="${esc(item?.intercom_ip || item?.ipAddress || item?.ip_address || "")}">
+        </div>
+        ${statusSelect(item?.status || "available", ["available","active","inactive"])}
+      `;
+    }
+
+    if (entity === "color") {
+      modalBody.innerHTML = `
+        <div class="field">
+          <label>Event Type</label>
+          <input name="event_type" value="${esc(item?.event_type || item?.eventType || "")}" required>
+        </div>
+        <div class="field">
+          <label>Color</label>
+          <input name="color" value="${esc(item?.color || "")}" placeholder="#ff0000" required>
+        </div>
+      `;
+    }
+
+    modalWrap.style.display = "flex";
+  }
+
+  function closeModal() {
+    modalWrap.style.display = "none";
+    modalBody.innerHTML = "";
+  }
+
+  $("modalClose").addEventListener("click", closeModal);
+  $("modalCancel").addEventListener("click", closeModal);
+  modalWrap.addEventListener("click", (e) => { if (e.target === modalWrap) closeModal(); });
+
+  // ---------- Actions ----------
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const id = btn.dataset.id ?? null; // ✅ don't force Number()
+
+    try {
+      if (action === "add-floor") return openModal("floor", "create", null);
+      if (action === "add-ward")  return openModal("ward", "create", null);
+      if (action === "add-room")  return openModal("room", "create", null);
+      if (action === "add-bed")   return openModal("bed",  "create", null);
+      if (action === "add-color") return openModal("color","create", null);
+
+      if (action === "edit-floor") return openModal("floor", "edit", state.floors.find(x => String(x.id) === String(id)));
+      if (action === "edit-ward")  return openModal("ward",  "edit", state.wards.find(x => String(x.id) === String(id)));
+      if (action === "edit-room")  return openModal("room",  "edit", state.rooms.find(x => String(x.id) === String(id)));
+      if (action === "edit-bed")   return openModal("bed",   "edit", state.beds.find(x => String(x.id) === String(id)));
+      if (action === "edit-color") return openModal("color", "edit", state.colors.find(x => String(x.id) === String(id)));
+
+      if (action === "del-floor") {
+        if (!confirm("Delete floor?")) return;
+        await apiFetch(`${API.floors}/${id}`, { method: "DELETE" });
+        toast("Floor deleted");
+        return loadAll();
+      }
+      if (action === "del-ward") {
+        if (!confirm("Delete ward?")) return;
+        await apiFetch(`${API.wards}/${id}`, { method: "DELETE" });
+        toast("Ward deleted");
+        return loadAll();
+      }
+      if (action === "del-room") {
+        if (!confirm("Delete room?")) return;
+        await apiFetch(`${API.rooms}/${id}`, { method: "DELETE" });
+        toast("Room deleted");
+        return loadAll();
+      }
+      if (action === "del-bed") {
+        if (!confirm("Delete bed?")) return;
+        await apiFetch(`${API.beds}/${id}`, { method: "DELETE" });
+        toast("Bed deleted");
+        return loadAll();
+      }
+      if (action === "del-color") {
+        if (!confirm("Delete color?")) return;
+        await apiFetch(`${API.colors}/${id}`, { method: "DELETE" });
+        toast("Color deleted");
+        return loadAll();
+      }
+    } catch (err) {
+      toast("Error: " + (err?.message || err));
+    }
+  });
+
+  modalForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(modalForm);
+    const entity = modalCtx.entity;
+    const mode = modalCtx.mode;
+    const id = modalCtx.id;
+
+    try {
+      if (entity === "floor") {
+        const body = {
+          name: fd.get("name"),
+          floor_number: Number(fd.get("floor_number")),
+          description: fd.get("description"),
+          status: fd.get("status"),
+        };
+        if (mode === "create") await apiFetch(API.floors, { method: "POST", body });
+        else await apiFetch(`${API.floors}/${id}`, { method: "PUT", body });
+      }
+
+      if (entity === "ward") {
+        const body = {
+          name: fd.get("name"),
+          floor_id: Number(fd.get("floor_id")),
+          ward_type: fd.get("ward_type"),
+          description: fd.get("description"),
+          status: fd.get("status"),
+        };
+        if (mode === "create") await apiFetch(API.wards, { method: "POST", body });
+        else await apiFetch(`${API.wards}/${id}`, { method: "PUT", body });
+      }
+
+      if (entity === "room") {
+        const body = {
+          ward_id: Number(fd.get("ward_id")),
+          room_name: fd.get("room_name"),
+          room_number: fd.get("room_number"),
+          system_ip: fd.get("system_ip"),
+          status: fd.get("status"),
+        };
+        if (mode === "create") await apiFetch(API.rooms, { method: "POST", body });
+        else await apiFetch(`${API.rooms}/${id}`, { method: "PUT", body });
+      }
+
+      if (entity === "bed") {
+        const body = {
+          room_id: Number(fd.get("room_id")),
+          bed_number: fd.get("bed_number"),
+          bed_name: fd.get("bed_name"),
+          intercom_ip: fd.get("intercom_ip"),
+          status: fd.get("status"),
         };
 
-        function switchTab(tabName, buttonElement) {
-            state.activeTab = tabName;
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
-
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('border-blue-600', 'text-blue-600');
-                btn.classList.add('border-transparent', 'text-gray-600');
-            });
-            buttonElement.classList.add('border-blue-600', 'text-blue-600');
+        if (mode === "create") {
+          // supports either POST or PUT create (depends on your backend)
+          try { await apiFetch(API.beds, { method: "POST", body }); }
+          catch { await apiFetch(API.beds, { method: "PUT", body }); }
+        } else {
+          await apiFetch(`${API.beds}/${id}`, { method: "PUT", body });
         }
-
-        async function initPage() {
-            await loadFloors();
-            await loadWards();
-            await loadRooms();
-            await loadBeds();
-            await loadCameras();
-            await loadEventTypeColors();
-            switchTab('floors', document.querySelector('.tab-btn'));
-        }
-
-        async function loadFloors() {
-            try {
-                const res = await fetch('/api/config/floors');
-                const data = await res.json();
-                state.floors = data.floors;
-                renderFloorsTable();
-            } catch (err) {
-                console.error('[v0] Error loading floors:', err);
-            }
-        }
-
-        function renderFloorsTable() {
-            const tbody = document.getElementById('floorsTable');
-            tbody.innerHTML = state.floors.map(floor => `
-                <tr>
-                    <td class="px-6 py-4">${floor.floor_number}</td>
-                    <td class="px-6 py-4 font-medium">${floor.name}</td>
-                    <td class="px-6 py-4 text-gray-600">${floor.description}</td>
-                    <td class="px-6 py-4">${floor.ward_count}</td>
-                    <td class="px-6 py-4 text-right space-x-2">
-                        <button onclick="editFloor(${floor.id})" class="text-blue-600 hover:text-blue-800">Edit</button>
-                        <button onclick="deleteFloor(${floor.id})" class="text-red-600 hover:text-red-800">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        async function deleteFloor(id) {
-            if (!confirm('Delete this floor? All associated wards, rooms, and beds will also be deleted.')) return;
-            try {
-                const res = await fetch(`/api/config/floors/${id}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data.success) await loadFloors();
-            } catch (err) {
-                console.error('[v0] Error deleting floor:', err);
-            }
-        }
-
-        function openAddFloorModal() {
-            state.editMode.floor = null;
-            document.getElementById('floorModalTitle').textContent = 'Add Floor';
-            document.getElementById('floorName').value = '';
-            document.getElementById('floorNumber').value = '';
-            document.getElementById('floorDescription').value = '';
-            document.getElementById('floorModal').classList.remove('hidden');
-        }
-
-        function closeFloorModal() {
-            document.getElementById('floorModal').classList.add('hidden');
-        }
-
-        async function saveFloor() {
-            const name = document.getElementById('floorName').value.trim();
-            const number = document.getElementById('floorNumber').value.trim();
-            const description = document.getElementById('floorDescription').value.trim();
-
-            if (!name || !number) {
-                alert('Please fill in all required fields.');
-                return;
-            }
-
-            try {
-                const method = state.editMode.floor ? 'PUT' : 'POST';
-                const url = state.editMode.floor
-                    ? `/api/config/floors/${state.editMode.floor}`
-                    : '/api/config/floors';
-
-                const res = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, floor_number: number, description })
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    await loadFloors();
-                    closeFloorModal();
-                } else {
-                    alert('Error saving floor');
-                }
-            } catch (err) {
-                console.error('[v0] Error saving floor:', err);
-                alert('Error saving floor');
-            }
-        }
-
-        function editFloor(id) {
-            const floor = state.floors.find(f => f.id === id);
-            if (!floor) return;
-            state.editMode.floor = id;
-            document.getElementById('floorModalTitle').textContent = 'Edit Floor';
-            document.getElementById('floorName').value = floor.name;
-            document.getElementById('floorNumber').value = floor.floor_number;
-            document.getElementById('floorDescription').value = floor.description || '';
-            document.getElementById('floorModal').classList.remove('hidden');
-        }
-
-        async function loadWards() {
-            try {
-                const res = await fetch('/api/config/wards');
-                const data = await res.json();
-                state.wards = data.wards;
-                renderWardsTable();
-            } catch (err) {
-                console.error('[v0] Error loading wards:', err);
-            }
-        }
-
-        function renderWardsTable() {
-            const tbody = document.getElementById('wardsTable');
-            tbody.innerHTML = state.wards.map(ward => `
-                <tr>
-                    <td class="px-6 py-4 font-medium">${ward.name}</td>
-                    <td class="px-6 py-4">${ward.ward_type}</td>
-                    <td class="px-6 py-4 text-gray-600">${ward.floor_name}</td>
-                    <td class="px-6 py-4">${ward.room_count}</td>
-                    <td class="px-6 py-4 text-right space-x-2">
-                        <button onclick="editWard(${ward.id})" class="text-blue-600 hover:text-blue-800">Edit</button>
-                        <button onclick="deleteWard(${ward.id})" class="text-red-600 hover:text-red-800">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        async function deleteWard(id) {
-            if (!confirm('Delete this ward? All associated rooms and beds will also be deleted.')) return;
-            try {
-                const res = await fetch(`/api/config/wards/${id}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data.success) await loadWards();
-            } catch (err) {
-                console.error('[v0] Error deleting ward:', err);
-            }
-        }
-
-        function openAddWardModal() {
-            state.editMode.ward = null;
-            document.getElementById('wardModalTitle').textContent = 'Add Ward';
-            document.getElementById('wardName').value = '';
-            document.getElementById('wardType').value = '';
-
-            const floorSelect = document.getElementById('wardFloor');
-            floorSelect.innerHTML = '<option value="">Select Floor</option>';
-            state.floors.forEach(floor => {
-                floorSelect.innerHTML += `<option value="${floor.id}">${floor.name}</option>`;
-            });
-
-            document.getElementById('wardModal').classList.remove('hidden');
-        }
-
-        function closeWardModal() {
-            document.getElementById('wardModal').classList.add('hidden');
-        }
-
-        async function saveWard() {
-            const name = document.getElementById('wardName').value.trim();
-            const floorId = document.getElementById('wardFloor').value;
-            const type = document.getElementById('wardType').value;
-
-            if (!name || !floorId || !type) {
-                alert('Please fill in all required fields.');
-                return;
-            }
-
-            try {
-                const method = state.editMode.ward ? 'PUT' : 'POST';
-                const url = state.editMode.ward
-                    ? `/api/config/wards/${state.editMode.ward}`
-                    : '/api/config/wards';
-
-                const res = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ floor_id: parseInt(floorId), name, ward_type: type })
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    await loadWards();
-                    closeWardModal();
-                } else {
-                    alert('Error saving ward');
-                }
-            } catch (err) {
-                console.error('[v0] Error saving ward:', err);
-                alert('Error saving ward');
-            }
-        }
-
-        function editWard(id) {
-            const ward = state.wards.find(w => w.id === id);
-            if (!ward) return;
-            state.editMode.ward = id;
-            document.getElementById('wardModalTitle').textContent = 'Edit Ward';
-            document.getElementById('wardName').value = ward.name;
-            document.getElementById('wardType').value = ward.ward_type;
-
-            const floorSelect = document.getElementById('wardFloor');
-            floorSelect.innerHTML = '<option value="">Select Floor</option>';
-            state.floors.forEach(floor => {
-                floorSelect.innerHTML += `<option value="${floor.id}" ${floor.id === ward.floor_id ? 'selected' : ''}>${floor.name}</option>`;
-            });
-
-            document.getElementById('wardModal').classList.remove('hidden');
-        }
-
-        async function loadRooms() {
-            try {
-                const res = await fetch('/api/config/rooms');
-                const data = await res.json();
-                state.rooms = data.rooms;
-                renderRoomsTable();
-            } catch (err) {
-                console.error('[v0] Error loading rooms:', err);
-            }
-        }
-
-        function renderRoomsTable() {
-            const tbody = document.getElementById('roomsTable');
-            tbody.innerHTML = state.rooms.map(room => `
-                <tr>
-                    <td class="px-6 py-4">${room.room_number}</td>
-                    <td class="px-6 py-4 font-medium">${room.room_name}</td>
-                    <td class="px-6 py-4">${room.room_type}</td>
-                    <td class="px-6 py-4 text-gray-600">${room.ward_name}</td>
-                    <td class="px-6 py-4 text-gray-600">${room.floor_name}</td>
-                    <td class="px-6 py-4">${room.bed_count}</td>
-                    <td class="px-6 py-4">${room.camera_count}</td>
-                    <td class="px-6 py-4 text-right space-x-2">
-                        <button onclick="editRoom(${room.id})" class="text-blue-600 hover:text-blue-800">Edit</button>
-                        <button onclick="deleteRoom(${room.id})" class="text-red-600 hover:text-red-800">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        async function deleteRoom(id) {
-            if (!confirm('Delete this room? All associated beds will also be deleted.')) return;
-            try {
-                const res = await fetch(`/api/config/rooms/${id}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data.success) await loadRooms();
-            } catch (err) {
-                console.error('[v0] Error deleting room:', err);
-            }
-        }
-
-        function openAddRoomModal() {
-            state.editMode.room = null;
-            document.getElementById('roomModalTitle').textContent = 'Add Room';
-            document.getElementById('roomNumber').value = '';
-            document.getElementById('roomName').value = '';
-            document.getElementById('roomType').value = '';
-
-            const wardSelect = document.getElementById('roomWard');
-            wardSelect.innerHTML = '<option value="">Select Ward</option>';
-            state.wards.forEach(ward => {
-                wardSelect.innerHTML += `<option value="${ward.id}">${ward.name}</option>`;
-            });
-
-            document.getElementById('roomModal').classList.remove('hidden');
-        }
-
-        function closeRoomModal() {
-            document.getElementById('roomModal').classList.add('hidden');
-        }
-
-        async function saveRoom() {
-            const number = document.getElementById('roomNumber').value.trim();
-            const name = document.getElementById('roomName').value.trim();
-            const wardId = document.getElementById('roomWard').value;
-            const type = document.getElementById('roomType').value;
-
-            if (!number || !name || !wardId || !type) {
-                alert('Please fill in all required fields.');
-                return;
-            }
-
-            try {
-                const method = state.editMode.room ? 'PUT' : 'POST';
-                const url = state.editMode.room
-                    ? `/api/config/rooms/${state.editMode.room}`
-                    : '/api/config/rooms';
-
-                const res = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ room_number: number, room_name: name, ward_id: parseInt(wardId), room_type: type })
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    await loadRooms();
-                    closeRoomModal();
-                } else {
-                    alert('Error saving room');
-                }
-            } catch (err) {
-                console.error('[v0] Error saving room:', err);
-                alert('Error saving room');
-            }
-        }
-
-        function editRoom(id) {
-            const room = state.rooms.find(r => r.id === id);
-            if (!room) return;
-            state.editMode.room = id;
-            document.getElementById('roomModalTitle').textContent = 'Edit Room';
-            document.getElementById('roomNumber').value = room.room_number;
-            document.getElementById('roomName').value = room.room_name;
-            document.getElementById('roomType').value = room.room_type;
-
-            const wardSelect = document.getElementById('roomWard');
-            wardSelect.innerHTML = '<option value="">Select Ward</option>';
-            state.wards.forEach(ward => {
-                wardSelect.innerHTML += `<option value="${ward.id}" ${ward.id === room.ward_id ? 'selected' : ''}>${ward.name}</option>`;
-            });
-
-            document.getElementById('roomModal').classList.remove('hidden');
-        }
-
-        async function loadBeds() {
-            try {
-                const res = await fetch('/api/config/beds');
-                const data = await res.json();
-                state.beds = data.beds;
-                renderBedsTable();
-            } catch (err) {
-                console.error('[v0] Error loading beds:', err);
-            }
-        }
-
-        function renderBedsTable() {
-            const tbody = document.getElementById('bedsTable');
-            tbody.innerHTML = state.beds.map(bed => `
-                <tr>
-                    <td class="px-6 py-4">${bed.bed_number}</td>
-                    <td class="px-6 py-4 font-medium">${bed.bed_name}</td>
-                    <td class="px-6 py-4">${bed.room_name}</td>
-                    <td class="px-6 py-4">${bed.ward_name}</td>
-                    <td class="px-6 py-4">${bed.status}</td>
-                    <td class="px-6 py-4">${bed.intercom_device_id || '-'}</td>
-                    <td class="px-6 py-4">${bed.intercom_ip || '-'}</td>
-                    <td class="px-6 py-4">${bed.camera_available ? 'Yes' : 'No'}</td>
-                    <td class="px-6 py-4 text-right space-x-2">
-                        <button onclick="editBed(${bed.id})" class="text-blue-600 hover:text-blue-800">Edit</button>
-                        <button onclick="deleteBed(${bed.id})" class="text-red-600 hover:text-red-800">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        async function deleteBed(id) {
-            if (!confirm('Delete this bed?')) return;
-            try {
-                const res = await fetch(`/api/config/beds/${id}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data.success) await loadBeds();
-            } catch (err) {
-                console.error('[v0] Error deleting bed:', err);
-            }
-        }
-
-        function openAddBedModal() {
-            state.editMode.bed = null;
-            document.getElementById('bedModalTitle').textContent = 'Add Bed';
-            document.getElementById('bedNumber').value = '';
-            document.getElementById('bedName').value = '';
-            document.getElementById('bedIntercomId').value = '';
-            document.getElementById('bedIntercomIp').value = '';
-            document.getElementById('bedStatus').value = 'active';
-
-            const roomSelect = document.getElementById('bedRoom');
-            roomSelect.innerHTML = '<option value="">Select Room</option>';
-            if (state.rooms && Array.isArray(state.rooms)) {
-                state.rooms.forEach(room => {
-                    roomSelect.innerHTML += `<option value="${room.id}">${room.room_name}</option>`;
-                });
-            }
-
-            const cameraSelect = document.getElementById('bedCamera');
-            cameraSelect.innerHTML = '<option value="">No Camera</option>';
-            if (state.cameras && Array.isArray(state.cameras)) {
-                state.cameras.forEach(camera => {
-                    cameraSelect.innerHTML += `<option value="${camera.id}">${camera.camera_name}</option>`;
-                });
-            }
-
-            document.getElementById('bedModal').classList.remove('hidden');
-        }
-
-        function closeBedModal() {
-            document.getElementById('bedModal').classList.add('hidden');
-        }
-
-        function editBed(id) {
-            const bed = state.beds.find(b => b.id === id);
-            if (!bed) return;
-            state.editMode.bed = id;
-            document.getElementById('bedModalTitle').textContent = 'Edit Bed';
-            document.getElementById('bedNumber').value = bed.bed_number;
-            document.getElementById('bedName').value = bed.bed_name;
-            document.getElementById('bedIntercomId').value = bed.intercom_device_id || '';
-            document.getElementById('bedIntercomIp').value = bed.intercom_ip || '';
-            document.getElementById('bedStatus').value = bed.status;
-
-            const roomSelect = document.getElementById('bedRoom');
-            roomSelect.innerHTML = '<option value="">Select Room</option>';
-            if (state.rooms && Array.isArray(state.rooms)) {
-                state.rooms.forEach(room => {
-                    roomSelect.innerHTML += `<option value="${room.id}" ${room.id === bed.room_id ? 'selected' : ''}>${room.room_name}</option>`;
-                });
-            }
-
-            const cameraSelect = document.getElementById('bedCamera');
-            cameraSelect.innerHTML = '<option value="">No Camera</option>';
-            if (state.cameras && Array.isArray(state.cameras)) {
-                state.cameras.forEach(camera => {
-                    cameraSelect.innerHTML += `<option value="${camera.id}" ${camera.id === bed.camera_id ? 'selected' : ''}>${camera.camera_name}</option>`;
-                });
-            }
-
-            document.getElementById('bedModal').classList.remove('hidden');
-        }
-
-        async function saveBed() {
-            const number = document.getElementById('bedNumber').value.trim();
-            const name = document.getElementById('bedName').value.trim();
-            const roomId = document.getElementById('bedRoom').value;
-            const intercomId = document.getElementById('bedIntercomId').value.trim();
-            const intercomIp = document.getElementById('bedIntercomIp').value.trim();
-            const cameraId = document.getElementById('bedCamera').value;
-            const status = document.getElementById('bedStatus').value;
-
-            if (!number || !name || !roomId) {
-                alert('Please fill in all required fields.');
-                return;
-            }
-
-            try {
-                const method = state.editMode.bed ? 'PUT' : 'POST';
-                const url = state.editMode.bed
-                    ? `/api/config/beds/${state.editMode.bed}`
-                    : '/api/config/beds';
-
-                const res = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        bed_number: number,
-                        bed_name: name,
-                        room_id: parseInt(roomId),
-                        intercom_device_id: intercomId,
-                        intercom_ip: intercomIp,
-                        camera_id: cameraId ? parseInt(cameraId) : null,
-                        status: status
-                    })
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    // Call intercom configuration if intercom details provided
-                    if (intercomId && intercomIp) {
-                        await fetch(`/api/config/beds/${data.bed_id}/intercom`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                intercom_device_id: intercomId,
-                                intercom_ip: intercomIp
-                            })
-                        });
-                    }
-                    await loadBeds();
-                    closeBedModal();
-                } else {
-                    alert('Error saving bed');
-                }
-            } catch (err) {
-                console.error('[v0] Error saving bed:', err);
-                alert('Error saving bed');
-            }
-        }
-
-
-        async function loadCameras() {
-            try {
-                const res = await fetch('/api/cameras');
-                const data = await res.json();
-                state.cameras = data.cameras || [];
-                renderCamerasTable();
-            } catch (err) {
-                console.error('[v0] Error loading cameras:', err);
-                state.cameras = []; // Ensure cameras is always an array
-            }
-        }
-
-        function renderCamerasTable() {
-            const tbody = document.getElementById('camerasTable');
-            tbody.innerHTML = state.cameras.map(camera => `
-                <tr>
-                    <td class="px-6 py-4 font-medium">${camera.camera_name}</td>
-                    <td class="px-6 py-4">${camera.room_name}</td>
-                    <td class="px-6 py-4 text-sm font-mono truncate">${camera.rtsp_url}</td>
-                    <td class="px-6 py-4">${camera.ip_address}</td>
-                    <td class="px-6 py-4 text-right space-x-2">
-                        <button onclick="editCamera(${camera.id})" class="text-blue-600 hover:text-blue-800">Edit</button>
-                        <button onclick="deleteCamera(${camera.id})" class="text-red-600 hover:text-red-800">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        async function deleteCamera(id) {
-            if (!confirm('Delete this camera?')) return;
-            try {
-                const res = await fetch(`/api/config/cameras/${id}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data.success) await loadCameras();
-            } catch (err) {
-                console.error('[v0] Error deleting camera:', err);
-            }
-        }
-
-        function openAddCameraModal() {
-            state.editMode.camera = null;
-            document.getElementById('cameraModalTitle').textContent = 'Add Camera';
-            document.getElementById('cameraName').value = '';
-            document.getElementById('cameraRtspUrl').value = '';
-            document.getElementById('cameraIp').value = '';
-
-            const roomSelect = document.getElementById('cameraRoom');
-            roomSelect.innerHTML = '<option value="">Select Room</option>';
-            state.rooms.forEach(room => {
-                roomSelect.innerHTML += `<option value="${room.id}">${room.room_name}</option>`;
-            });
-
-            document.getElementById('cameraModal').classList.remove('hidden');
-        }
-
-        function closeCameraModal() {
-            document.getElementById('cameraModal').classList.add('hidden');
-        }
-
-        async function saveCamera() {
-            const name = document.getElementById('cameraName').value.trim();
-            const roomId = document.getElementById('cameraRoom').value;
-            const rtspUrl = document.getElementById('cameraRtspUrl').value.trim();
-            const ip = document.getElementById('cameraIp').value.trim();
-
-            if (!name || !roomId || !rtspUrl) {
-                alert('Please fill in all required fields.');
-                return;
-            }
-
-            try {
-                const method = state.editMode.camera ? 'PUT' : 'POST';
-                const url = state.editMode.camera
-                    ? `/api/config/cameras/${state.editMode.camera}`
-                    : '/api/config/cameras';
-
-                const res = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        camera_name: name,
-                        room_id: parseInt(roomId),
-                        rtsp_url: rtspUrl,
-                        ip_address: ip
-                    })
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    await loadCameras();
-                    closeCameraModal();
-                } else {
-                    alert('Error saving camera');
-                }
-            } catch (err) {
-                console.error('[v0] Error saving camera:', err);
-                alert('Error saving camera');
-            }
-        }
-
-        function editCamera(id) {
-            const camera = state.cameras.find(c => c.id === id);
-            if (!camera) return;
-            state.editMode.camera = id;
-            document.getElementById('cameraModalTitle').textContent = 'Edit Camera';
-            document.getElementById('cameraName').value = camera.camera_name;
-            document.getElementById('cameraRtspUrl').value = camera.rtsp_url;
-            document.getElementById('cameraIp').value = camera.ip_address;
-
-            const roomSelect = document.getElementById('cameraRoom');
-            roomSelect.innerHTML = '<option value="">Select Room</option>';
-            state.rooms.forEach(room => {
-                roomSelect.innerHTML += `<option value="${room.id}" ${room.id === camera.room_id ? 'selected' : ''}>${room.room_name}</option>`;
-            });
-
-            document.getElementById('cameraModal').classList.remove('hidden');
-        }
-
-        async function loadEventTypeColors() {
-            try {
-                const response = await fetch('/api/config/colors');
-                const data = await response.json();
-                state.eventTypes = data.colors || [];
-                renderEventTypes();
-            } catch (error) {
-                console.error('[v0] Error loading event type colors:', error);
-            }
-        }
-
-        function renderEventTypes() {
-            const container = document.getElementById('eventTypesContainer');
-            if (!container) return;
-
-            container.innerHTML = state.eventTypes.map(et => `
-                <div class="bg-white rounded-lg shadow-md p-5 border-l-4" style="border-left-color: ${et.color || et.primary_color}">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-lg" style="background-color: ${et.color || et.primary_color}"></div>
-                            <div>
-                                <h4 class="font-semibold text-gray-900">${et.event_type}</h4>
-                                <p class="text-xs text-gray-500 font-mono">${et.color || et.primary_color}</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="editEventType('${et.event_type}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                            </button>
-                            <button onclick="deleteEventType('${et.event_type}')" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function openAddEventTypeModal() {
-            let editingEventType = null;
-            document.getElementById('eventTypeName').value = '';
-            document.getElementById('eventTypeColor').value = '#3b82f6';
-            document.getElementById('eventTypeModal').classList.remove('hidden');
-        }
-
-        function closeEventTypeModal() {
-            document.getElementById('eventTypeModal').classList.add('hidden');
-        }
-
-        async function saveEventType() {
-            const eventType = document.getElementById('eventTypeName').value.trim();
-            const color = document.getElementById('eventTypeColor').value;
-
-            if (!eventType || !color) {
-                alert('Please fill in all fields.');
-                return;
-            }
-
-            const colorScheme = {
-                event_type: eventType,
-                color: color
-            };
-
-            try {
-                const res = await fetch(`/api/config/colors/${eventType}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(colorScheme)
-                });
-                const data = await res.json();
-                if (data.success) {
-                    alert('Event type saved successfully!');
-                    await loadEventTypeColors();
-                    closeEventTypeModal();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (err) {
-                console.error('[v0] Error saving event type:', err);
-            }
-        }
-
-        function editEventType(eventType) {
-            const et = state.eventTypes.find(e => e.event_type === eventType);
-            if (et) {
-                document.getElementById('eventTypeName').value = et.event_type;
-                document.getElementById('eventTypeColor').value = et.color || et.primary_color;
-                document.getElementById('eventTypeModal').classList.remove('hidden');
-            }
-        }
-
-        async function deleteEventType(eventType) {
-            if (!confirm(`Delete event type "${eventType}"?`)) return;
-            try {
-                const res = await fetch(`/api/config/colors/${eventType}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data.success) {
-                    await loadEventTypeColors();
-                }
-            } catch (err) {
-                console.error('[v0] Error deleting event type:', err);
-            }
-        }
-
-        async function resetColors() {
-            if (!confirm('Reset all colors to default?')) return;
-            try {
-                const res = await fetch('/api/config/colors/reset', { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    await loadEventTypeColors();
-                    alert('Colors reset to default!');
-                }
-            } catch (err) {
-                console.error('[v0] Error resetting colors:', err);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', initPage);
-    </script>
+      }
+
+      if (entity === "color") {
+        const body = { event_type: fd.get("event_type"), color: fd.get("color") };
+        if (mode === "create") await apiFetch(API.colors, { method: "POST", body });
+        else await apiFetch(`${API.colors}/${id}`, { method: "PUT", body });
+      }
+
+      closeModal();
+      toast("Saved ✅");
+      await loadAll();
+    } catch (err) {
+      toast("Error: " + (err?.message || err));
+    }
+  });
+
+  // Tabs
+  document.querySelectorAll(".tabBtn").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+
+  // Search
+  $("searchInput").addEventListener("input", (e) => {
+    state.q = e.target.value || "";
+    renderActive();
+  });
+
+  // Refresh
+  $("refreshBtn").addEventListener("click", async () => {
+    try { await loadAll(); toast("Refreshed ✅"); } catch (e) { toast("Error: " + e.message); }
+  });
+
+  // Init
+  (async function init() {
+    setTab("floors");
+    await provideSidebar();
+    await loadAll();
+  })();
+
+})();
+</script>
 </body>
-
 </html>

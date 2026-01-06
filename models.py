@@ -50,7 +50,7 @@ class Room(Base):
     status = Column(String(20), default='active')
     created_at = Column(DateTime, default=get_karachi_time)
 
-    # ✅ system/intercom identity belongs to ROOM
+    # system/intercom identity belongs to ROOM
     system_device_id = Column(String(100), unique=True, nullable=True)
     system_ip = Column(String(50), unique=True, index=True, nullable=True)
     system_mac = Column(String(100), unique=True, nullable=True)
@@ -64,19 +64,21 @@ class Bed(Base):
     __tablename__ = 'beds'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-
-    # (keeping nullable=True same as your current style; change only if you want strict)
     room_id = Column(Integer, ForeignKey('rooms.id', ondelete='SET NULL'), nullable=True)
-
+    intercom_ip = Column(String(50), nullable=True)
     bed_number = Column(String(50), nullable=False)
     bed_name = Column(String(100))
     status = Column(String(20), default='available')
     camera_id = Column(Integer, ForeignKey('cameras.id', ondelete='SET NULL'), nullable=True)
     created_at = Column(DateTime, default=get_karachi_time)
 
+    # ✅ ONLY this (user wants only IP)
+    intercom_ip = Column(String(50), nullable=True)
+
     room = relationship("Room", back_populates="beds")
     camera = relationship("Camera", foreign_keys=[camera_id])
     events = relationship("Event", back_populates="bed", cascade="all, delete-orphan")
+
 
 class Camera(Base):
     __tablename__ = 'cameras'
@@ -112,7 +114,6 @@ class Event(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    # ✅ NEW: link event to room (you already migrated DB column)
     room_id = Column(Integer, ForeignKey('rooms.id', ondelete='SET NULL'), nullable=True)
 
     bed_id = Column(Integer, ForeignKey('beds.id', ondelete='CASCADE'), nullable=True)
@@ -150,17 +151,21 @@ class ColorScheme(Base):
             'created_at': str(self.created_at)
         }
 
-def get_db_engine(
-    db_url="mysql+pymysql://root:@localhost/hospital_monitor",
-    socket_path="/opt/lampp/var/mysql/mysql.sock"
-):
+def get_db_engine(db_url: str, socket_path: str | None = None):
+    """
+    If socket_path is provided -> connect using unix_socket (XAMPP).
+    If socket_path is None -> normal TCP connection (host/port) from db_url.
+    """
+    connect_args = {}
+    if socket_path:
+        connect_args["unix_socket"] = socket_path
+
     return create_engine(
         db_url,
         echo=False,
         pool_pre_ping=True,
-        connect_args={"unix_socket": socket_path},
+        connect_args=connect_args if connect_args else None,
     )
-
 
 def get_db_session(engine):
     Session = sessionmaker(bind=engine)

@@ -1,375 +1,722 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Call History - L7700 Monitor</title>
-    <link href="../static/css/output.css" rel="stylesheet">
-    <link rel="stylesheet" href="../static/plugins/tabler-icons/tabler-icons.min.css">
-    <style>
-        @font-face {
-            font-family: 'Inter';
-            src: url('/static/fonts/inter-regular.woff2') format('woff2'),
-                url('/static/fonts/inter-regular.woff') format('woff');
-            font-weight: 400;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Call History - Hospital Monitoring</title>
 
-        @font-face {
-            font-family: 'Inter';
-            src: url('/static/fonts/inter-semibold.woff2') format('woff2'),
-                url('/static/fonts/inter-semibold.woff') format('woff');
-            font-weight: 600;
-        }
+  <link href="/static/css/output.css" rel="stylesheet">
 
-        * {
-            font-family: 'Inter', sans-serif;
-        }
+  <style>
+    :root{
+      --bg1:#f6f7ff;
+      --bg2:#f3fbff;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#e2e8f0;
+      --shadow: 0 10px 30px rgba(15,23,42,.08);
+      --shadow2: 0 12px 50px rgba(15,23,42,.10);
+      --primary:#0f172a;
+      --accent:#4f46e5;
+      --accent2:#06b6d4;
+      --danger:#ef4444;
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --radius:18px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 15% 10%, rgba(79,70,229,.12), transparent 55%),
+        radial-gradient(1200px 600px at 85% 0%, rgba(6,182,212,.10), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      min-height: 100vh;
+    }
 
-        .session-card {
-            animation: slideIn 0.3s ease-out;
-        }
+    .layout{ display:flex; min-height:100vh; width:100%; }
+    .sidebar{ width:260px; padding:18px; display:none; }
+    .sidebar .shell{
+      height: calc(100vh - 36px);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: var(--radius);
+      background: rgba(15,23,42,.92);
+      box-shadow: var(--shadow2);
+      overflow:auto;
+    }
+    .sidebar .shell *{ color:#fff; }
+    @media (min-width: 1024px){ .sidebar{ display:block; } }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
+    .main{ flex:1; padding:22px; }
+    .container{ max-width: 1180px; margin: 0 auto; }
 
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
+    .topbar{
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap:14px; margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .title{ display:flex; flex-direction:column; gap:4px; }
+    .title h1{ margin:0; font-size: 26px; letter-spacing: -0.02em; }
+    .title p{ margin:0; color:var(--muted); font-size: 13px; }
+
+    .actions{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;
+    }
+
+    .card{
+      background: rgba(255,255,255,.82);
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+    .cardHead{
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(226,232,240,.9);
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; flex-wrap: wrap;
+    }
+    .cardHead h3{ margin:0; font-size: 16px; letter-spacing: -0.01em; }
+    .cardHead .sub{ margin-top:4px; color:var(--muted); font-size: 12px; }
+    .cardBody{ padding: 14px 14px 16px; }
+
+    .filters{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 10px;
+      align-items:end;
+    }
+    @media(max-width: 980px){ .filters{ grid-template-columns: 1fr 1fr; } }
+    @media(max-width: 540px){ .filters{ grid-template-columns: 1fr; } }
+
+    .field label{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 800;
+    }
+    .input, select{
+      width:100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(226,232,240,1);
+      outline:none;
+      font-size: 14px;
+      background:#fff;
+      transition: all .15s ease;
+    }
+    .input:focus, select:focus{
+      border-color: rgba(79,70,229,.6);
+      box-shadow: 0 0 0 4px rgba(79,70,229,.12);
+    }
+
+    .btn{
+      border:1px solid rgba(226,232,240,1);
+      background:#fff;
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight:700;
+      font-size: 13px;
+      transition: all .18s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 22px rgba(15,23,42,.08); }
+    .btnPrimary{
+      background: linear-gradient(135deg, rgba(15,23,42,1), rgba(79,70,229,1));
+      color:#fff; border-color: transparent;
+    }
+    .btnGhost{
+      background: rgba(15,23,42,.04);
+      border-color: rgba(15,23,42,.08);
+    }
+
+    .tableWrap{
+      overflow:auto;
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: 16px;
+      background:#fff;
+    }
+    table{
+      width:100%;
+      border-collapse: separate;
+      border-spacing:0;
+      min-width: 1100px;
+      font-size: 13px;
+    }
+    thead th{
+      position: sticky;
+      top:0;
+      z-index:2;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      color: var(--muted);
+      font-weight: 800;
+      text-align:left;
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(226,232,240,1);
+      white-space: nowrap;
+    }
+    tbody td{
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(226,232,240,.75);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    tbody tr:hover{ background: rgba(79,70,229,.06); }
+    tbody tr:last-child td{ border-bottom: 0; }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 12px;
+      border: 1px solid rgba(226,232,240,1);
+      background: rgba(15,23,42,.04);
+    }
+    .bOk{ background: rgba(34,197,94,.10); border-color: rgba(34,197,94,.25); color: #166534; }
+    .bWarn{ background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.30); color: #92400e; }
+    .bOff{ background: rgba(100,116,139,.12); border-color: rgba(100,116,139,.22); color: #334155; }
+
+    .mutedSmall{ color: var(--muted); font-size: 12px; }
+    .empty{
+      padding: 22px;
+      text-align:center;
+      color: var(--muted);
+    }
+    .empty strong{ color: var(--text); }
+
+    #toast{
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      max-width: 420px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(15,23,42,.92);
+      color: #fff;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.14);
+      display:none;
+      animation: pop .18s ease;
+    }
+    @keyframes pop{
+      from{ transform: translateY(10px); opacity:.5; }
+      to{ transform: translateY(0); opacity:1; }
+    }
+
+    #modalWrap{
+      position: fixed;
+      inset:0;
+      background: rgba(2,6,23,.48);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+    }
+    .modal{
+      width: min(980px, 100%);
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: 22px;
+      box-shadow: 0 30px 90px rgba(15,23,42,.22);
+      backdrop-filter: blur(12px);
+      overflow:hidden;
+      animation: pop .16s ease;
+    }
+    .modalHead{
+      padding: 16px 18px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      border-bottom: 1px solid rgba(226,232,240,.9);
+    }
+    .modalHead h2{ margin:0; font-size: 16px; letter-spacing: -0.01em; }
+    .modalBody{ padding: 14px 18px 18px; }
+    .pillRow{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-bottom: 10px;
+    }
+    .pill{
+      border-radius:999px;
+      padding:6px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      background: rgba(79,70,229,.10);
+      border: 1px solid rgba(79,70,229,.25);
+      color:#3730a3;
+    }
+    .icon{ width:16px; height:16px; display:inline-block; }
+  </style>
 </head>
 
-<body class="bg-gray-50">
-    <div class="min-h-screen">
-        <!-- Sidebar -->
-        <div
-            class="fixed left-0 top-0 h-full w-20 bg-gradient-to-b from-gray-800 to-gray-900 flex flex-col items-center py-6 shadow-xl z-50">
-            <div class="mb-8">
-                <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
-                    <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                            d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                    </svg>
-                </div>
-            </div>
-            <!-- Nav Items -->
-            <nav class="flex-1 flex flex-col space-y-4">
-                <a href="/" data-nav="dashboard"
-                    class="sidebar-item flex flex-col items-center py-3 px-4 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                    </svg>
-                    <span class="text-xs mt-1">Dashboard</span>
-                </a>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div id="sidebar" class="shell"></div>
+    </aside>
 
-                <a href="/calls" data-nav="calls"
-                    class="sidebar-item flex flex-col items-center py-3 px-4 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                        <path
-                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    <span class="text-xs mt-1">Calls</span>
-                </a>
+    <main class="main">
+      <div class="container">
 
-                <a href="/history" data-nav="history"
-                    class="sidebar-item flex flex-col items-center py-3 px-4 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span class="text-xs mt-1">History</span>
-                </a>
+        <div class="topbar">
+          <div class="title">
+            <h1>Call History</h1>
+            <p>Only Call Sessions (start/end/duration) — filtered by Floor/Ward/Room</p>
+          </div>
 
-                <a href="/config" data-nav="config"
-                    class="sidebar-item flex flex-col items-center py-3 px-4 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span class="text-xs mt-1">Config</span>
-                </a>
-            </nav>
+          <div class="actions">
+            <input id="searchInput" class="input" style="max-width: 320px;" placeholder="Search sessions..." />
+            <button id="refreshBtn" class="btn btnPrimary" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none">
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M21 3v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              Refresh
+            </button>
+          </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="ml-20 p-8">
-            <div class="max-w-7xl mx-auto">
-                <!-- Header -->
-                <div class="mb-8">
-                    <h1 class="text-3xl font-bold text-gray-800">Call History & Activity Log</h1>
-                    <p class="text-gray-600 mt-2">View complete call sessions and event sequences</p>
-                </div>
+        <div id="toast"></div>
 
-                <!-- Filters -->
-                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Floor</label>
-                            <select id="floorFilter" onchange="applyFilters()"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                <option value="">All Floors</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Ward</label>
-                            <select id="wardFilter" onchange="applyFilters()"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                <option value="">All Wards</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Room</label>
-                            <select id="roomFilter" onchange="applyFilters()"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                <option value="">All Rooms</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Limit</label>
-                            <select id="limitFilter" onchange="applyFilters()"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                <option value="50">Last 50 sessions</option>
-                                <option value="100" selected>Last 100 sessions</option>
-                                <option value="200">Last 200 sessions</option>
-                                <option value="500">Last 500 sessions</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Call Sessions -->
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-6">Call Sessions</h2>
-                    <div id="sessionsContainer" class="space-y-4">
-                        <div class="text-center py-12 text-gray-500">
-                            <p class="text-lg">Loading call history...</p>
-                        </div>
-                    </div>
-                </div>
+        <div class="card" style="margin-bottom: 14px;">
+          <div class="cardHead">
+            <div>
+              <h3>Filters</h3>
+              <div class="sub">Filter sessions instantly after data loads</div>
             </div>
+            <div class="mutedSmall" id="metaLine">Loading…</div>
+          </div>
+          <div class="cardBody">
+            <div class="filters">
+              <div class="field">
+                <label>Floor</label>
+                <select id="floorSel">
+                  <option value="">All Floors</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Ward</label>
+                <select id="wardSel">
+                  <option value="">All Wards</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Room</label>
+                <select id="roomSel">
+                  <option value="">All Rooms</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Limit</label>
+                <select id="limitSel">
+                  <option value="100">Last 100 sessions</option>
+                  <option value="200">Last 200 sessions</option>
+                  <option value="500">Last 500 sessions</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <div class="card">
+          <div class="cardHead">
+            <div>
+              <h3>Call Sessions</h3>
+              <div class="sub">Computed from DB events grouped by <code>call_session_id</code></div>
+            </div>
+            <div class="mutedSmall" id="countLine">—</div>
+          </div>
+
+          <div class="cardBody">
+            <div class="tableWrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Session</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Duration</th>
+                    <th>Last Seen</th>
+                    <th>Floor</th>
+                    <th>Ward</th>
+                    <th>Room</th>
+                    <th>Bed</th>
+                    <th>Type(s)</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="sessionsBody">
+                  <tr>
+                    <td colspan="12" class="empty">
+                      <strong>Loading…</strong>
+                      <div class="mutedSmall">Fetching events from server.</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mutedSmall" style="margin-top:10px;">
+              Tip: Agar aapko aur purani history chahiye to server endpoint me limit/dates add kar dete hain.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div id="modalWrap">
+    <div class="modal">
+      <div class="modalHead">
+        <h2 id="modalTitle">Session Details</h2>
+        <button id="modalClose" class="btn btnGhost" type="button">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="pillRow" id="modalPills"></div>
+        <div class="tableWrap">
+          <table style="min-width: 900px;">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Event</th>
+                <th>Floor</th>
+                <th>Ward</th>
+                <th>Room</th>
+                <th>Bed</th>
+                <th>Status</th>
+                <th>Camera</th>
+              </tr>
+            </thead>
+            <tbody id="modalEvents"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <script>
-        // State management
-        const state = {
-            sessions: [],
-            filters: {
-                floor_id: '',
-                ward_id: '',
-                room_id: '',
-                limit: 100
-            },
-            customColors: {}
-        };
+<script>
+(function () {
+  // Increase this if you want more history depth (depends on server performance)
+  const ENDPOINT = "/api/events/recent?limit=5000";
 
-        document.addEventListener('DOMContentLoaded', () => {
-            initPage();
+  const state = {
+    events: [],
+    sessions: [],
+    q: "",
+    filter: { floor:"", ward:"", room:"", limit:100 }
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+    }[c]));
+  }
+
+  function toast(msg) {
+    const el = $("toast");
+    el.textContent = msg;
+    el.style.display = "block";
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.display = "none"; }, 2600);
+  }
+
+  function badge(status) {
+    const s = String(status || "").toLowerCase();
+    if (s === "active") return `<span class="badge bOk">active</span>`;
+    if (s === "ended" || s === "cleared") return `<span class="badge bOff">${esc(s)}</span>`;
+    if (s === "inactive") return `<span class="badge bOff">inactive</span>`;
+    return `<span class="badge bWarn">${esc(status || "unknown")}</span>`;
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return "—";
+    try{
+      const d = new Date(String(ts).replace(" ", "T"));
+      if (isNaN(d.getTime())) return ts;
+      return d.toLocaleString();
+    }catch{
+      return ts;
+    }
+  }
+
+  function parseTs(ts){
+    if (!ts) return null;
+    const d = new Date(String(ts).replace(" ", "T"));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function fmtDuration(ms){
+    if (ms == null || !isFinite(ms) || ms < 0) return "—";
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    const h = Math.floor(m / 60);
+    const d = Math.floor(h / 24);
+    if (d > 0) return `${d}d ${h%24}h`;
+    if (h > 0) return `${h}h ${m%60}m`;
+    if (m > 0) return `${m}m ${s%60}s`;
+    return `${s}s`;
+  }
+
+  function isEndEvent(ev){
+    const st = String(ev.status || "").toLowerCase();
+    const et = String(ev.event_type || ev.event || "").toLowerCase();
+    return (st === "ended" || st === "cleared" || st === "inactive" || et === "reset" || et === "cancel");
+  }
+
+  async function provideSidebar() {
+    try {
+      const r = await fetch("/sidebar.html");
+      if (!r.ok) return;
+      $("sidebar").innerHTML = await r.text();
+    } catch {}
+  }
+
+  async function load() {
+    $("metaLine").textContent = "Loading…";
+    try {
+      const res = await fetch(ENDPOINT);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to load history");
+
+      state.events = Array.isArray(data) ? data : (data.events || []);
+      $("metaLine").textContent = `Loaded ${state.events.length} events`;
+
+      buildFilters();
+      buildSessions();
+      render();
+    } catch (e) {
+      $("metaLine").textContent = "Error";
+      $("sessionsBody").innerHTML = `
+        <tr><td colspan="12" class="empty">
+          <strong>Error loading call history</strong>
+          <div class="mutedSmall">${esc(e.message || e)}</div>
+        </td></tr>`;
+    }
+  }
+
+  function uniq(arr) {
+    return Array.from(new Set(arr.filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
+  }
+
+  function buildFilters() {
+    const floors = uniq(state.events.map(e => e.floor_name));
+    const wards  = uniq(state.events.map(e => e.ward_name));
+    const rooms  = uniq(state.events.map(e => e.room_name));
+
+    const floorSel = $("floorSel");
+    const wardSel  = $("wardSel");
+    const roomSel  = $("roomSel");
+
+    const keepFloor = floorSel.value;
+    const keepWard  = wardSel.value;
+    const keepRoom  = roomSel.value;
+
+    floorSel.innerHTML = `<option value="">All Floors</option>` + floors.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join("");
+    wardSel.innerHTML  = `<option value="">All Wards</option>` + wards.map(w => `<option value="${esc(w)}">${esc(w)}</option>`).join("");
+    roomSel.innerHTML  = `<option value="">All Rooms</option>` + rooms.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
+
+    floorSel.value = keepFloor || "";
+    wardSel.value  = keepWard || "";
+    roomSel.value  = keepRoom || "";
+  }
+
+  function buildSessions() {
+    const byId = new Map();
+
+    for (const ev of state.events) {
+      const sid = (ev.call_session_id != null) ? ("S" + ev.call_session_id) : ("E" + ev.id);
+      if (!byId.has(sid)) {
+        byId.set(sid, {
+          sid,
+          call_session_id: ev.call_session_id,
+          room: ev.room_name || "",
+          ward: ev.ward_name || "",
+          floor: ev.floor_name || "",
+          bed: (ev.bed_number || ev.bed_name || ""),
+          types: new Set(),
+          start_ts: ev.system_timestamp || "",
+          last_ts: ev.system_timestamp || "",
+          end_ts: "",
+          has_active: false,
+          events: []
         });
+      }
 
-        async function initPage() {
-            console.log('[v0] Initializing history page');
-            await loadCustomColors();
-            await loadFilterOptions();
-            await loadHistory();
-        }
+      const s = byId.get(sid);
+      s.types.add(ev.event_type || ev.event || "Unknown");
+      s.events.push(ev);
 
-        async function loadCustomColors() {
-            try {
-                const response = await fetch('/api/config/colors');
-                if (!response.ok) throw new Error('Failed to load colors');
-                const data = await response.json();
-                if (data && data.colors) {
-                    data.colors.forEach(color => {
-                        state.customColors[color.event_type] = color.color;
-                    });
-                }
-                console.log('[v0] Colors loaded:', state.customColors);
-            } catch (error) {
-                console.error('[v0] Error loading colors:', error);
-            }
-        }
+      // min(start), max(last)
+      if (String(ev.system_timestamp || "") < String(s.start_ts || "")) s.start_ts = ev.system_timestamp || s.start_ts;
+      if (String(ev.system_timestamp || "") > String(s.last_ts || "")) s.last_ts = ev.system_timestamp || s.last_ts;
 
-        async function loadFilterOptions() {
-            try {
-                const [floorsRes, wardsRes, roomsRes] = await Promise.all([
-                    fetch('/api/config/floors'),
-                    fetch('/api/config/wards'),
-                    fetch('/api/config/rooms')
-                ]);
+      // status heuristics
+      if (String(ev.status || "").toLowerCase() === "active") s.has_active = true;
+      if (isEndEvent(ev)) {
+        // keep latest end time
+        if (!s.end_ts || String(ev.system_timestamp || "") > String(s.end_ts)) s.end_ts = ev.system_timestamp || s.end_ts;
+      }
+    }
 
-                const floorsData = await floorsRes.json();
-                const wardsData = await wardsRes.json();
-                const roomsData = await roomsRes.json();
+    // finalize status + duration
+    const now = new Date();
+    state.sessions = Array.from(byId.values()).map(s => {
+      const startD = parseTs(s.start_ts);
+      const endD = parseTs(s.end_ts);
+      const lastD = parseTs(s.last_ts);
 
-                // Populate floor filter
-                const floorSelect = document.getElementById('floorFilter');
-                (floorsData.floors || []).forEach(floor => {
-                    const option = document.createElement('option');
-                    option.value = floor.id;
-                    option.textContent = floor.name;
-                    floorSelect.appendChild(option);
-                });
+      const ended = !!endD;
+      const status = ended ? "ended" : (s.has_active ? "active" : "unknown");
 
-                // Populate ward filter
-                const wardSelect = document.getElementById('wardFilter');
-                (wardsData.wards || []).forEach(ward => {
-                    const option = document.createElement('option');
-                    option.value = ward.id;
-                    option.textContent = ward.name;
-                    wardSelect.appendChild(option);
-                });
+      const durMs = startD ? ((ended ? endD : now) - startD) : null;
 
-                // Populate room filter
-                const roomSelect = document.getElementById('roomFilter');
-                (roomsData.rooms || []).forEach(room => {
-                    const option = document.createElement('option');
-                    option.value = room.id;
-                    option.textContent = `${room.room_name} (${room.room_number})`;
-                    roomSelect.appendChild(option);
-                });
-            } catch (error) {
-                console.error('[v0] Error loading filter options:', error);
-            }
-        }
+      return {
+        ...s,
+        status,
+        duration: fmtDuration(durMs),
+        _sort: (lastD ? lastD.getTime() : 0)
+      };
+    }).sort((a,b) => b._sort - a._sort);
+  }
 
-        async function loadHistory() {
-            try {
-                const params = new URLSearchParams();
-                if (state.filters.floor_id) params.append('floor_id', state.filters.floor_id);
-                if (state.filters.ward_id) params.append('ward_id', state.filters.ward_id);
-                if (state.filters.room_id) params.append('room_id', state.filters.room_id);
-                params.append('limit', state.filters.limit);
+  function passesFilters(item) {
+    if (state.filter.floor && item.floor !== state.filter.floor) return false;
+    if (state.filter.ward && item.ward !== state.filter.ward) return false;
+    if (state.filter.room && item.room !== state.filter.room) return false;
 
-                const url = `/api/history/calls?${params}`;
-                console.log('[v0] Fetching history from:', url);
+    const q = (state.q || "").trim().toLowerCase();
+    if (q) {
+      const hay = [
+        item.sid, item.floor, item.ward, item.room, item.bed,
+        Array.from(item.types).join(","),
+        item.status, item.start_ts, item.end_ts, item.last_ts
+      ].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }
 
-                const response = await fetch(url);
-                console.log('[v0] Response status:', response.status);
+  function getFilteredSessions() {
+    const limit = Number(state.filter.limit || 100);
+    return state.sessions.filter(passesFilters).slice(0, limit);
+  }
 
-                if (!response.ok) throw new Error('Failed to load history');
+  function render() {
+    const sessions = getFilteredSessions();
+    $("countLine").textContent = `${sessions.length} session(s) showing`;
 
-                state.sessions = await response.json();
-                console.log('[v0] Loaded sessions:', state.sessions.length);
-                console.log('[v0] Session data:', state.sessions);
+    if (!sessions.length) {
+      $("sessionsBody").innerHTML = `
+        <tr><td colspan="12" class="empty">
+          <strong>No sessions</strong>
+          <div class="mutedSmall">Try removing filters or increasing limit.</div>
+        </td></tr>`;
+      return;
+    }
 
-                renderSessions();
-            } catch (error) {
-                console.error('[v0] Error loading history:', error);
-                document.getElementById('sessionsContainer').innerHTML = '<div class="text-center py-12 text-red-500"><p class="text-lg">Error loading call history: ' + error.message + '</p></div>';
-            }
-        }
+    $("sessionsBody").innerHTML = sessions.map(s => `
+      <tr>
+        <td><strong>${esc(s.sid)}</strong></td>
+        <td>${esc(fmtTime(s.start_ts))}</td>
+        <td>${esc(s.end_ts ? fmtTime(s.end_ts) : "—")}</td>
+        <td><strong>${esc(s.duration || "—")}</strong></td>
+        <td>${esc(fmtTime(s.last_ts))}</td>
+        <td>${esc(s.floor || "-")}</td>
+        <td>${esc(s.ward || "-")}</td>
+        <td>${esc(s.room || "-")}</td>
+        <td>${esc(s.bed || "-")}</td>
+        <td>${esc(Array.from(s.types).join(", "))}</td>
+        <td>${badge(s.status)}</td>
+        <td>
+          <button class="btn btnGhost" data-action="details" data-sid="${esc(s.sid)}" type="button">Details</button>
+        </td>
+      </tr>
+    `).join("");
+  }
 
-        function applyFilters() {
-            state.filters.floor_id = document.getElementById('floorFilter').value;
-            state.filters.ward_id = document.getElementById('wardFilter').value;
-            state.filters.room_id = document.getElementById('roomFilter').value;
-            state.filters.limit = parseInt(document.getElementById('limitFilter').value);
-            loadHistory();
-        }
+  // Modal
+  const modalWrap = $("modalWrap");
+  $("modalClose").addEventListener("click", () => modalWrap.style.display = "none");
+  modalWrap.addEventListener("click", (e) => { if (e.target === modalWrap) modalWrap.style.display = "none"; });
 
-        function renderSessions() {
-            const container = document.getElementById('sessionsContainer');
+  function openDetails(sid) {
+    const s = state.sessions.find(x => x.sid === sid);
+    if (!s) return;
 
-            if (state.sessions.length === 0) {
-                container.innerHTML = '<div class="text-center py-12 text-gray-500"><p class="text-lg">No call sessions found</p></div>';
-                return;
-            }
+    $("modalTitle").textContent = `Session Details • ${sid}`;
+    $("modalPills").innerHTML = `
+      <span class="pill">${esc(s.floor || "—")}</span>
+      <span class="pill">${esc(s.ward || "—")}</span>
+      <span class="pill">${esc(s.room || "—")}</span>
+      <span class="pill">${esc(s.bed || "—")}</span>
+      <span class="pill">${esc(s.status || "—")}</span>
+      <span class="pill">${esc(s.duration || "—")}</span>
+    `;
 
-            container.innerHTML = state.sessions.map(session => `
-                <div class="session-card border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
-                    <!-- Header -->
-                    <div class="flex items-start justify-between mb-4 pb-4 border-b border-gray-200">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-800">${session.room_name || 'Unknown Room'}</h3>
-                            <p class="text-sm text-gray-600">${session.bed_name || 'Bed ' + session.bed_number}</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="inline-block px-4 py-2 rounded-full font-semibold text-sm" style="background-color: ${getEventColor(session.first_event_type)}20; color: ${getEventColor(session.first_event_type)}">
-                                ${session.first_event_type}
-                            </span>
-                            <p class="text-xs text-gray-500 mt-2">${session.started_at}</p>
-                        </div>
-                    </div>
+    const rows = (s.events || []).slice().sort((a,b)=>String(b.system_timestamp||"").localeCompare(String(a.system_timestamp||"")));
+    $("modalEvents").innerHTML = rows.map(e => `
+      <tr>
+        <td>${esc(fmtTime(e.system_timestamp))}</td>
+        <td><strong>${esc(e.event_type || e.event || "Unknown")}</strong></td>
+        <td>${esc(e.floor_name || "-")}</td>
+        <td>${esc(e.ward_name || "-")}</td>
+        <td>${esc(e.room_name || "-")}</td>
+        <td>${esc(e.bed_number || e.bed_name || "-")}</td>
+        <td>${badge(e.status || "unknown")}</td>
+        <td>${e.camera_available ? `<a href="${esc(e.camera_url || "#")}" target="_blank">Open</a>` : "-"}</td>
+      </tr>
+    `).join("") || `<tr><td colspan="8" class="empty"><strong>No events in this session</strong></td></tr>`;
 
-                    <!-- Location Info -->
-                    <div class="flex items-center gap-4 mb-4 text-sm text-gray-600">
-                        <span>${session.floor_name}</span>
-                        <span>-</span>
-                        <span>${session.ward_name}</span>
-                        <span>-</span>
-                        <span>Duration: <strong>${formatDuration(session.duration_seconds)}</strong></span>
-                    </div>
+    modalWrap.style.display = "flex";
+  }
 
-                    <!-- Event Sequence Timeline -->
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <div class="text-sm font-semibold text-gray-700 mb-3">Event Sequence</div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            ${session.event_sequence.map((event, idx) => `
-                                <div class="flex items-center">
-                                    <div class="px-3 py-1 rounded-full text-sm font-medium" style="background-color: ${getEventColor(event.event_type)}20; color: ${getEventColor(event.event_type)}">
-                                        ${event.event_type}
-                                    </div>
-                                    <span class="text-xs text-gray-500 ml-2">${event.timestamp}</span>
-                                    ${idx < session.event_sequence.length - 1 ? '<span class="text-gray-400 mx-2">→</span>' : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-action]");
+    if (!b) return;
+    if (b.dataset.action === "details") openDetails(b.dataset.sid);
+  });
 
-        function getEventColor(eventType) {
-            // Use custom colors if available, otherwise use defaults
-            if (state.customColors[eventType]) {
-                return state.customColors[eventType];
-            }
+  // Filters + search
+  $("searchInput").addEventListener("input", (e) => { state.q = e.target.value || ""; render(); });
+  $("floorSel").addEventListener("change", (e) => { state.filter.floor = e.target.value || ""; render(); });
+  $("wardSel").addEventListener("change", (e) => { state.filter.ward  = e.target.value || ""; render(); });
+  $("roomSel").addEventListener("change", (e) => { state.filter.room  = e.target.value || ""; render(); });
+  $("limitSel").addEventListener("change", (e) => { state.filter.limit = Number(e.target.value || 100); render(); });
 
-            const defaultColors = {
-                'Call': '#3B82F6',
-                'Emergency': '#EF4444',
-                'Alarm': '#F97316',
-                'Assistance': '#A855F7',
-                'Accept': '#10B981',
-                'Cancel': '#6B7280',
-                'Presence': '#8B5CF6',
-                'Reset': '#6B7280',
-                'ROOM SERVICE': '#06B6D4',
-                'Doctor Present': '#EC4899',
-                'CATERING SERVICE': '#14B8A6',
-                'Isolation': '#F59E0B',
-                'Low Battery': '#EF4444',
-                'Present': '#10B981'
-            };
-            return defaultColors[eventType] || '#6B7280';
-        }
+  $("refreshBtn").addEventListener("click", async () => {
+    toast("Refreshing…");
+    await load();
+    toast("Refreshed ✅");
+  });
 
-        function formatDuration(seconds) {
-            if (seconds < 60) return `${seconds}s`;
-            const minutes = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            if (minutes < 60) return `${minutes}m ${secs}s`;
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            return `${hours}h ${mins}m`;
-        }
+  (async function init() {
+    await provideSidebar();
+    await load();
+  })();
+})();
+</script>
 
-        // Auto-refresh every 30 seconds
-        setInterval(() => {
-            loadHistory();
-        }, 30000);
-    </script>
-    <!-- Add shared sidebar script before other scripts -->
-    <script src="/static/js/shared-sidebar.js"></script>
 </body>
-
 </html>
