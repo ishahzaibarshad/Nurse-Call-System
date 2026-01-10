@@ -1,10 +1,18 @@
 import atexit
+import os
 import cv2
 import numpy as np
 from datetime import datetime
 import threading
 from typing import Dict, Optional, Union
 import time
+
+# ---------------------------
+# OpenCV/FFmpeg RTSP stability
+# ---------------------------
+# Force RTSP over TCP + set timeout (in microseconds) for FFmpeg backend.
+# This helps a LOT when streams freeze or never open.
+os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp|stimeout;5000000")
 
 # Helps stability with OpenCV in threaded apps
 try:
@@ -81,8 +89,14 @@ class CameraSimulator:
 
 
 class RealCameraStream:
+    """
+    Robust RTSP stream reader:
+      - Forces RTSP over TCP + timeout via OPENCV_FFMPEG_CAPTURE_OPTIONS
+      - Retries with CAP_FFMPEG then CAP_ANY
+      - Detects frozen streams (no frames) and reconnects
+    """
     def __init__(self, rtsp_url: str, room_name: str):
-        self.rtsp_url = rtsp_url
+        self.rtsp_url = (rtsp_url or "").strip()
         self.room_name = (room_name or "").strip()
 
         self._stop = threading.Event()
@@ -95,6 +109,7 @@ class RealCameraStream:
 
         self.reconnect_delay = 3
         self.last_frame_ts: float = 0.0
+        self.freeze_seconds = 6.0   # if no frames for this long -> reconnect
 
     def start(self):
         if self.thread and self.thread.is_alive():
@@ -109,7 +124,6 @@ class RealCameraStream:
 
     def stop(self):
         self._stop.set()
-
         # release capture first so read() unblocks
         with self._cap_lock:
             if self.cap:
@@ -124,24 +138,61 @@ class RealCameraStream:
             t.join(timeout=2.5)
         self.thread = None
 
-    def _capture_frames(self):
-        while not self._stop.is_set():
-            cap: Optional[cv2.VideoCapture] = None
-            try:
-                print(f"[Camera] Connecting to {self.room_name}: {self.rtsp_url}")
+    def _open_capture(self) -> Optional[cv2.VideoCapture]:
+        # Try FFmpeg backend first (best for RTSP), then CAP_ANY fallback.
+        backends = []
+        try:
+            backends.append(cv2.CAP_FFMPEG)
+        except Exception:
+            pass
+        backends.append(cv2.CAP_ANY)
 
-                cap = cv2.VideoCapture(self.rtsp_url, cv2.CAP_FFMPEG)
+        # Also try a TCP hint URL variant (some builds behave better)
+        url_variants = [self.rtsp_url]
+        if self.rtsp_url.startswith("rtsp://") and "?" not in self.rtsp_url:
+            url_variants.append(self.rtsp_url + "?tcp")
+
+        for url in url_variants:
+            for backend in backends:
+                cap = None
                 try:
-                    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-                except Exception:
-                    pass
+                    cap = cv2.VideoCapture(url, backend)
+                    try:
+                        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                    except Exception:
+                        pass
 
-                if not cap.isOpened():
-                    print(f"[Camera] Failed to open RTSP stream for {self.room_name}")
+                    if cap.isOpened():
+                        return cap
+
                     try:
                         cap.release()
                     except Exception:
                         pass
+                except Exception:
+                    try:
+                        if cap:
+                            cap.release()
+                    except Exception:
+                        pass
+                    continue
+
+        return None
+
+    def _capture_frames(self):
+        while not self._stop.is_set():
+            cap: Optional[cv2.VideoCapture] = None
+            try:
+                print(f"[Camera] Connecting to '{self.room_name}' -> {self.rtsp_url}")
+
+                cap = self._open_capture()
+                if not cap or not cap.isOpened():
+                    print(f"[Camera] ❌ Failed to open RTSP for '{self.room_name}'")
+                    if cap:
+                        try:
+                            cap.release()
+                        except Exception:
+                            pass
                     cap = None
                     time.sleep(self.reconnect_delay)
                     continue
@@ -149,24 +200,30 @@ class RealCameraStream:
                 with self._cap_lock:
                     self.cap = cap
 
-                print(f"[Camera] Connected to {self.room_name}")
+                print(f"[Camera] ✅ Connected: '{self.room_name}'")
+
+                self.last_frame_ts = 0.0
 
                 while not self._stop.is_set():
                     ret, frame = cap.read()
+
                     if not ret or frame is None:
-                        print(f"[Camera] Lost connection to {self.room_name}")
+                        # If read fails, break to reconnect
+                        print(f"[Camera] ⚠️ Read failed: '{self.room_name}', reconnecting...")
                         break
 
+                    # Basic resize to reduce CPU
                     h, w = frame.shape[:2]
                     if w > 1280:
                         scale = 1280 / w
                         frame = cv2.resize(frame, (1280, int(h * scale)))
 
+                    # Overlay
                     overlay = frame.copy()
                     cv2.rectangle(overlay, (5, 5), (320, 80), (0, 0, 0), -1)
                     cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
 
-                    cv2.putText(frame, f"Room: {self.room_name}", (10, 30),
+                    cv2.putText(frame, f"Bed: {self.room_name}", (10, 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -184,10 +241,15 @@ class RealCameraStream:
                         self.frame = frame
                         self.last_frame_ts = time.time()
 
+                    # Freeze watchdog
+                    if self.last_frame_ts and (time.time() - self.last_frame_ts) > self.freeze_seconds:
+                        print(f"[Camera] 🧊 Frozen stream detected: '{self.room_name}', reconnecting...")
+                        break
+
                     time.sleep(0.005)
 
             except Exception as e:
-                print(f"[Camera] Error in {self.room_name}: {str(e)}")
+                print(f"[Camera] ❌ Error '{self.room_name}': {e}")
 
             finally:
                 if cap:
@@ -231,6 +293,7 @@ class CameraManager:
 
     def add_camera(self, room_name: str, rtsp_url: str = None):
         key = self._key(room_name)
+
         with self._lock:
             if key in self.cameras:
                 return
@@ -244,9 +307,10 @@ class CameraManager:
                     raise ValueError(f"RTSP URL required for {key}")
                 cam = RealCameraStream(rtsp_url, key)
 
-            cam.start()
             self.cameras[key] = cam
-            print(f"[Camera] Added camera for {key}")
+
+        cam.start()
+        print(f"[Camera] Added camera for '{key}'")
 
     def remove_camera(self, room_name: str):
         key = self._key(room_name)

@@ -9,329 +9,443 @@
 
   <style>
     :root{
-      --bg1:#f6f7ff;
-      --bg2:#f3fbff;
+      --bg1:#eef2ff;
+      --bg2:#f7fbff;
       --card:#ffffff;
       --text:#0f172a;
       --muted:#64748b;
-      --border:#e2e8f0;
-      --shadow: 0 10px 30px rgba(15,23,42,.08);
-      --shadow2: 0 12px 50px rgba(15,23,42,.10);
-      --primary:#0f172a;
+      --border:#e5e7eb;
+
+      --shadow: 0 10px 30px rgba(15,23,42,.10);
+      --shadow2: 0 18px 55px rgba(15,23,42,.12);
+
+      --nav:#1f2937;
+      --nav2:#111827;
+
       --accent:#4f46e5;
-      --accent2:#06b6d4;
-      --danger:#ef4444;
       --ok:#22c55e;
-      --warn:#f59e0b;
+      --danger:#ef4444;
+
       --radius:18px;
+      --radius2:22px;
     }
 
     *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+
     body{
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
       color:var(--text);
       background:
-        radial-gradient(1200px 600px at 15% 10%, rgba(79,70,229,.12), transparent 55%),
-        radial-gradient(1200px 600px at 85% 0%, rgba(6,182,212,.10), transparent 55%),
+        radial-gradient(1100px 700px at 12% 10%, rgba(79,70,229,.10), transparent 55%),
+        radial-gradient(1100px 700px at 90% 5%, rgba(37,99,235,.08), transparent 55%),
         linear-gradient(180deg, var(--bg1), var(--bg2));
-      min-height: 100vh;
+      min-height:100vh;
     }
 
     .layout{ display:flex; min-height:100vh; width:100%; }
-    .sidebar{ width:260px; padding:18px; display:none; }
+
+    /* Sidebar */
+    .sidebar{ width: 250px; padding:18px; }
     .sidebar .shell{
       height: calc(100vh - 36px);
-      border: 1px solid rgba(255,255,255,.25);
-      border-radius: var(--radius);
-      background: rgba(15,23,42,.92);
+      border-radius: var(--radius2);
+      background: linear-gradient(180deg, rgba(17,24,39,.98), rgba(31,41,55,.96));
       box-shadow: var(--shadow2);
       overflow:auto;
     }
     .sidebar .shell *{ color:#fff; }
-    @media (min-width: 1024px){ .sidebar{ display:block; } }
 
-    .main{ flex:1; padding:22px; }
-    .container{ max-width: 1180px; margin: 0 auto; }
+    /* Main */
+    .main{ flex:1; padding: 18px 18px 28px; }
+    .container{ max-width: 1400px; margin: 0 auto; }
 
-    /* Header like config/history */
+    /* Top controls */
     .topbar{
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(229,231,235,1);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow);
+      padding: 12px 14px;
       display:flex;
-      align-items:flex-start;
+      align-items:center;
       justify-content:space-between;
-      gap:14px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
+      gap: 12px;
     }
-    .title{ display:flex; flex-direction:column; gap:4px; }
-    .title h1{ margin:0; font-size: 26px; letter-spacing: -0.02em; }
-    .title p{ margin:0; color:var(--muted); font-size: 13px; }
 
-    .toolbar{
+    .leftPills{
       display:flex;
       align-items:center;
       gap:10px;
       flex-wrap: wrap;
-      justify-content:flex-end;
-    }
-
-    .input{
-      width: 220px;
-      max-width: 70vw;
-      padding: 11px 12px 11px 38px;
-      border-radius: 12px;
-      border: 1px solid rgba(226,232,240,1);
-      outline:none;
-      font-size: 14px;
-      background:#fff;
-      transition: all .15s ease;
-    }
-    .input:focus{
-      border-color: rgba(79,70,229,.6);
-      box-shadow: 0 0 0 4px rgba(79,70,229,.12);
-    }
-    .search{ position:relative; }
-    .search svg{
-      position:absolute;
-      left:12px; top:50%;
-      transform: translateY(-50%);
-      opacity:.55;
-    }
-
-    .btn{
-      border:1px solid rgba(226,232,240,1);
-      background:#fff;
-      color: var(--text);
-      padding: 10px 12px;
-      border-radius: 12px;
-      cursor:pointer;
-      font-weight:800;
-      font-size: 13px;
-      transition: all .18s ease;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      user-select:none;
-      box-shadow: 0 8px 22px rgba(15,23,42,.06);
-    }
-    .btn:hover{ transform: translateY(-1px); box-shadow: 0 12px 28px rgba(15,23,42,.10); }
-
-    .btnPrimary{
-      background: linear-gradient(135deg, rgba(15,23,42,1), rgba(79,70,229,1));
-      color:#fff;
-      border-color: transparent;
-      box-shadow: 0 14px 36px rgba(79,70,229,.22);
-    }
-
-    .select{
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(226,232,240,1);
-      background:#fff;
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--text);
-      outline:none;
-      cursor:pointer;
-      box-shadow: 0 8px 22px rgba(15,23,42,.06);
     }
 
     .pill{
       display:inline-flex;
       align-items:center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(226,232,240,1);
-      background: rgba(255,255,255,.85);
-      backdrop-filter: blur(10px);
-      box-shadow: 0 8px 22px rgba(15,23,42,.06);
-      font-size: 13px;
+      gap:10px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(229,231,235,1);
+      background: #fff;
+      font-size: 12px;
       font-weight: 900;
+      box-shadow: 0 8px 20px rgba(15,23,42,.06);
       white-space: nowrap;
     }
+
     .dot{
-      width: 10px; height: 10px; border-radius: 99px;
-      background: #ef4444;
-      box-shadow: 0 0 0 4px rgba(239,68,68,.15);
+      width: 10px; height: 10px; border-radius: 999px;
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(239,68,68,.16);
     }
     .dot.ok{
-      background: #22c55e;
-      box-shadow: 0 0 0 4px rgba(34,197,94,.15);
+      background: var(--ok);
+      box-shadow: 0 0 0 4px rgba(34,197,94,.18);
     }
 
-    /* Page sections */
-    .pageCard{
-      background: rgba(255,255,255,.82);
-      border: 1px solid rgba(226,232,240,.9);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
-      overflow:hidden;
-      margin-bottom: 14px;
-    }
-    .pageCardHead{
-      padding: 16px 18px;
-      border-bottom: 1px solid rgba(226,232,240,.9);
+    .rightActions{
       display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap: 12px;
+      align-items:center;
+      gap: 10px;
       flex-wrap: wrap;
+      justify-content:flex-end;
     }
-    .pageCardHead h2{
-      margin:0;
-      font-size: 16px;
-      letter-spacing: -0.01em;
-      font-weight: 900;
-    }
-    .pageCardHead p{
-      margin:6px 0 0;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .pageCardBody{ padding: 14px 14px 16px; }
 
-    /* Grid + cards (your existing calls cards, tuned to match theme) */
+    .btn{
+      border: 1px solid rgba(229,231,235,1);
+      background: #fff;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor:pointer;
+      font-weight: 1000;
+      font-size: 12px;
+      transition: all .16s ease;
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      box-shadow: 0 8px 20px rgba(15,23,42,.06);
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 12px 28px rgba(15,23,42,.10); }
+    .btn:active{ transform: translateY(0px) scale(.99); }
+
+    .btnPrimary{
+      background: linear-gradient(135deg, rgba(79,70,229,1), rgba(37,99,235,1));
+      color:#fff;
+      border-color: transparent;
+      box-shadow: 0 14px 34px rgba(79,70,229,.24);
+    }
+
+    /* Active calls grid (LARGE cards) */
+    .gridWrap{ margin-top: 16px; }
     .grid{
       display:grid;
-      gap: 16px;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      align-items: start;
+      gap: 18px;
+      grid-template-columns: repeat(2, minmax(520px, 1fr));
+      align-items: stretch;
+    }
+    @media (max-width: 1280px){
+      .grid{ grid-template-columns: 1fr; }
     }
 
+    /* ===== Card + Ring animation ===== */
     .card{
-      background: rgba(255,255,255,.92);
-      border: 1px solid rgba(226,232,240,.9);
-      border-radius: 22px;
-      overflow:hidden;
-      box-shadow: 0 10px 28px rgba(15,23,42,.08);
-      transition: .18s ease;
       position:relative;
-      backdrop-filter: blur(10px);
+      border-radius: 28px;
+      overflow: visible; /* allow rings outside */
+      min-height: 720px;
     }
-    .card:hover{ transform: translateY(-2px); box-shadow: 0 16px 46px rgba(15,23,42,.14); }
 
-    .card::before{
+    /* Inner actual card container */
+    .cardInner{
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(229,231,235,1);
+      border-radius: 28px;
+      box-shadow: var(--shadow2);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height: 720px;
+      position:relative;
+      z-index: 2;
+    }
+
+    /* Rings: show "call is coming" */
+    .card.ringing::before,
+    .card.ringing::after{
       content:"";
       position:absolute;
-      left:0; top:0; bottom:0;
-      width: 6px;
-      background: var(--ev, var(--accent));
+      inset: -12px;            /* ring outside */
+      border-radius: 34px;
+      border: 2px solid rgba(79,70,229,.0);
+      opacity: 0;
+      transform: scale(.98);
+      pointer-events:none;
+      z-index: 1;
     }
 
-    .cardTop{
-      padding: 16px 16px 12px;
+    .card.ringing::before{
+      border-color: color-mix(in srgb, var(--ring, #4f46e5) 70%, transparent);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--ring, #4f46e5) 25%, transparent);
+      animation: ringPulse 1.6s ease-out infinite;
+    }
+    .card.ringing::after{
+      inset: -22px;
+      border-color: color-mix(in srgb, var(--ring, #4f46e5) 45%, transparent);
+      animation: ringPulse2 1.6s ease-out infinite;
+    }
+
+    @keyframes ringPulse{
+      0%   { opacity:.65; transform: scale(.98); filter: blur(0px); }
+      60%  { opacity:.10; transform: scale(1.03); }
+      100% { opacity:0;   transform: scale(1.06); }
+    }
+    @keyframes ringPulse2{
+      0%   { opacity:.25; transform: scale(.98); }
+      75%  { opacity:.06; transform: scale(1.05); }
+      100% { opacity:0;   transform: scale(1.10); }
+    }
+
+    /* Reduce motion support */
+    @media (prefers-reduced-motion: reduce){
+      .card.ringing::before,
+      .card.ringing::after{ animation:none; opacity:.25; transform:none; }
+    }
+
+    /* Card header */
+    .cardHead{
+      padding: 16px 18px;
       display:flex;
-      align-items:flex-start;
+      align-items:center;
       justify-content:space-between;
       gap: 12px;
+      border-bottom: 1px solid rgba(229,231,235,1);
+      background: rgba(248,250,252,.95);
     }
-    .cardTitle{
+
+    .headLeft{
       display:flex;
-      gap: 12px;
-      align-items:flex-start;
+      align-items:center;
+      gap: 14px;
+      min-width:0;
     }
-    .iconBox{
+
+    .callIcon{
       width: 44px;
       height: 44px;
       border-radius: 16px;
       display:grid;
       place-items:center;
-      background: var(--evSoft, rgba(79,70,229,.12));
-      color: var(--ev, var(--accent));
-      border: 1px solid rgba(226,232,240,.9);
+      background: rgba(37,99,235,.10);
+      border: 1px solid rgba(229,231,235,1);
+      color: rgba(37,99,235,1);
       flex: 0 0 auto;
     }
-    .t1{
-      font-weight: 1000;
-      font-size: 14px;
-      margin: 0;
-      line-height: 1.15;
+
+    .hTitle{
+      display:flex;
+      flex-direction:column;
+      gap: 4px;
+      min-width:0;
     }
-    .t2{
-      margin: 4px 0 0;
-      font-size: 12px;
-      font-weight: 800;
+    .hTitle .t1{
+      margin:0;
+      font-weight: 1100;
+      font-size: 22px;
+      letter-spacing:-0.02em;
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .hTitle .t2{
+      margin:0;
       color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
     }
 
     .badge{
       display:inline-flex;
       align-items:center;
-      gap: 8px;
-      padding: 7px 10px;
+      gap: 10px;
+      padding: 9px 12px;
       border-radius: 999px;
-      font-size: 11px;
-      font-weight: 1000;
-      color: var(--ev, var(--accent));
-      background: var(--evSoft, rgba(79,70,229,.12));
-      border: 1px solid rgba(226,232,240,.9);
+      border: 1px solid rgba(229,231,235,1);
+      background: rgba(79,70,229,.08);
+      color: rgba(79,70,229,1);
+      font-size: 12px;
+      font-weight: 1100;
       white-space: nowrap;
     }
     .badge .miniDot{
-      width: 8px; height: 8px; border-radius: 99px;
-      background: var(--ev, var(--accent));
-      box-shadow: 0 0 0 4px rgba(0,0,0,.04);
+      width: 8px; height: 8px; border-radius: 999px;
+      background: rgba(79,70,229,1);
+      box-shadow: 0 0 0 4px rgba(79,70,229,.12);
     }
 
-    .meta{
-      margin: 0 16px 16px;
-      padding: 12px 12px;
-      border-radius: var(--radius);
-      background: rgba(248,250,252,.95);
-      border: 1px solid rgba(226,232,240,.9);
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px 12px;
-    }
-    .meta .k{
-      font-size: 10px;
-      font-weight: 1000;
-      letter-spacing: .8px;
-      color: rgba(100,116,139,.9);
-    }
-    .meta .v{
-      margin-top: 4px;
-      font-size: 12px;
-      font-weight: 900;
-      color: var(--text);
-    }
-
+    /* ===== Camera area: REMOVE BLUE CENTER COLOR ===== */
     .camera{
-      margin: 0 16px 16px;
-      border-radius: var(--radius);
+      margin: 14px 16px 0;
+      border-radius: 22px;
+      border: 1px solid rgba(229,231,235,1);
+      background:
+        radial-gradient(520px 300px at 50% 40%, rgba(15,23,42,.06), transparent 65%),
+        linear-gradient(180deg, #fafafa, #ffffff);
+      flex:1;
+      min-height: 520px;
       overflow:hidden;
-      border: 1px solid rgba(226,232,240,.9);
-      background: rgba(2,6,23,.04);
-      aspect-ratio: 16 / 10;
+      position:relative;
+      display:grid;
+      place-items:center;
     }
-    .camera img, .camera video{
+
+    .camera img{
       width:100%;
       height:100%;
       object-fit: cover;
       display:block;
     }
-    .camPlaceholder{
-      height:100%;
-      display:grid;
-      place-items:center;
-      color: var(--muted);
-      font-weight: 900;
+
+    .camIcon{ opacity:.55; width: 64px; height: 64px; }
+    .camPlaceholderText{
+      margin-top: 10px;
       font-size: 12px;
+      font-weight: 900;
+      color: rgba(100,116,139,.9);
+      text-align:center;
+    }
+
+    .meta{
+      margin: 12px 16px 16px;
+      border-radius: 22px;
+      border: 1px solid rgba(229,231,235,1);
+      background: rgba(248,250,252,.96);
+      padding: 14px 14px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 18px;
+    }
+    .metaItem .k{
+      font-size: 11px;
+      font-weight: 1000;
+      letter-spacing: .08em;
+      color: rgba(100,116,139,.95);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .metaItem .v{
+      font-size: 16px;
+      font-weight: 1000;
+      color: var(--text);
     }
 
     .empty{
-      grid-column: 1 / -1;
-      padding: 20px;
+      padding: 26px;
       text-align:center;
       color: var(--muted);
-      font-weight: 900;
-      background: rgba(255,255,255,.82);
-      border: 1px dashed rgba(226,232,240,.9);
+      font-weight: 1000;
+      background: rgba(255,255,255,.88);
+      border: 1px dashed rgba(229,231,235,1);
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+    }
+
+    /* Responsive hide sidebar on small screens */
+    @media (max-width: 1024px){
+      .sidebar{ display:none; }
+      .main{ padding: 14px; }
+    }
+
+    /* =========================
+       FULLSCREEN BEHAVIOR
+       ========================= */
+    body.fsMode{
+      background: #f8fafc;
+    }
+    body.fsMode .topbar{ display:none; }
+    body.fsMode .main{ padding: 10px; }
+    body.fsMode .container{ max-width: none; }
+    body.fsMode .gridWrap{ margin-top: 0; }
+
+    /* Sidebar overlay drawer in fullscreen */
+    body.fsMode .sidebar{
+      display:block;
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100vh;
+      width: 280px;
+      padding: 12px;
+      z-index: 1200;
+      pointer-events: none;
+    }
+    body.fsMode .sidebar .shell{
+      height: calc(100vh - 24px);
+      transform: translateX(calc(-100% - 14px));
+      transition: transform .22s ease;
+      pointer-events: auto;
       border-radius: 22px;
-      backdrop-filter: blur(10px);
+    }
+    body.fsMode.fsSidebarOpen .sidebar{ pointer-events: auto; }
+    body.fsMode.fsSidebarOpen .sidebar .shell{ transform: translateX(0); }
+
+    .fsBackdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.35);
+      backdrop-filter: blur(4px);
+      z-index: 1100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
+    }
+    body.fsMode.fsSidebarOpen .fsBackdrop{
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .fsHandle{
+      position: fixed;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px;
+      height: 72px;
+      border-radius: 999px;
+      border: 1px solid rgba(229,231,235,1);
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 10px 30px rgba(15,23,42,.16);
+      z-index: 1300;
+      display:none;
+      cursor:pointer;
+      user-select:none;
+      align-items:center;
+      justify-content:center;
+    }
+    body.fsMode .fsHandle{ display:flex; }
+    body.fsMode.fsSidebarOpen .fsHandle{ opacity: .25; }
+
+    .fsHandle .bars{
+      width: 14px;
+      height: 14px;
+      position: relative;
+      opacity: .7;
+    }
+    .fsHandle .bars::before{
+      content:"";
+      position:absolute;
+      left:0; right:0;
+      top: 3px;
+      height: 2px;
+      background: rgba(15,23,42,.75);
+      border-radius: 999px;
+      box-shadow: 0 4px 0 rgba(15,23,42,.75), 0 8px 0 rgba(15,23,42,.75);
     }
   </style>
 </head>
@@ -346,71 +460,50 @@
       <div class="container">
 
         <div class="topbar">
-          <div class="title">
-            <h1>Calls</h1>
-            <p>Active calls appear on top — all beds stay visible below.</p>
+          <div class="leftPills">
+            <div class="pill">
+              <span id="active-count-pill">0</span>
+              <span>Active</span>
+            </div>
+
+            <div class="pill" title="WebSocket status">
+              <span id="ws-status" class="dot"></span>
+              <span id="ws-text">Connecting</span>
+            </div>
           </div>
 
-          <div class="toolbar">
-            <div class="search">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="rgba(15,23,42,.55)" stroke-width="2"/>
-                <path d="M16.6 16.6L21 21" stroke="rgba(15,23,42,.55)" stroke-width="2" stroke-linecap="round"/>
-              </svg>
-              <input id="search-input" class="input" type="text" placeholder="Search bed / room / ward"
-                     oninput="app.onSearch(this.value)" />
-            </div>
-
-            <div class="pill" id="ws-status-container">
-              <span id="ws-status" class="dot"></span>
-              <span id="ws-text">Connecting...</span>
-            </div>
-
+          <div class="rightActions">
             <button class="btn" onclick="app.toggleShowCameras()">
-              <span id="camera-toggle-text">Show Cameras (Active Only)</span>
+              <span id="camera-toggle-text">Show Cameras</span>
             </button>
 
             <button class="btn" onclick="app.toggleAutoRefresh()">
-              <span id="auto-refresh-text">Auto Refresh: ON</span>
+              <span>Auto:</span>
+              <strong id="auto-refresh-text">ON</strong>
             </button>
 
-            <select id="filter-event-type" class="select">
-              <option value="">All</option>
-              <option value="idle">Idle</option>
-            </select>
+            <button class="btn btnPrimary" onclick="app.toggleFullscreen()">
+              <span>⛶</span>
+              <span id="fullscreen-text">Fullscreen</span>
+            </button>
           </div>
         </div>
 
-        <div class="pageCard">
-          <div class="pageCardHead">
-            <div>
-              <h2>Incoming Calls (Active) <span class="pill" style="margin-left:10px;" id="active-count">0 Active</span></h2>
-              <p>Updates live through WebSocket</p>
-            </div>
-          </div>
-          <div class="pageCardBody">
-            <div id="active-grid" class="grid">
-              <div class="empty">No active calls</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="pageCard">
-          <div class="pageCardHead">
-            <div>
-              <h2>All Beds</h2>
-              <p>Active beds are highlighted</p>
-            </div>
-          </div>
-          <div class="pageCardBody">
-            <div id="beds-grid" class="grid">
-              <div class="empty">Loading beds...</div>
-            </div>
+        <!-- ONLY ACTIVE CALLS -->
+        <div class="gridWrap">
+          <div id="active-grid" class="grid">
+            <div class="empty">Loading active calls...</div>
           </div>
         </div>
 
       </div>
     </main>
+  </div>
+
+  <!-- Fullscreen: backdrop + handle -->
+  <div id="fs-backdrop" class="fsBackdrop" onclick="app.closeFsSidebar()"></div>
+  <div id="fs-handle" class="fsHandle" title="Menu" onclick="app.toggleFsSidebar()">
+    <div class="bars" aria-hidden="true"></div>
   </div>
 
   <script>
@@ -420,21 +513,17 @@
         bedMap: {},
         ws: null,
         autoRefresh: true,
-        selectedFilter: '',
         showCameras: false,
         customColors: {},
         activeByBed: {},
-        lastRenderKey: '',
-        searchQuery: ''
       },
 
       _activeFetchInFlight: false,
       _wsDebounceTimer: null,
 
-      // ---------- NEW: helpers to support BOTH snake_case + camelCase ----------
       pick(obj, ...keys) {
+        if (!obj) return undefined;
         for (const k of keys) {
-          if (!obj) continue;
           const v = obj[k];
           if (v !== undefined && v !== null && v !== '') return v;
         }
@@ -447,7 +536,6 @@
         return [];
       },
       normEvent(ev) {
-        // Normalize server event into the fields this UI uses
         const e = {
           id: this.pick(ev, 'id'),
           status: this.pick(ev, 'status'),
@@ -456,17 +544,13 @@
           bed_id: this.pick(ev, 'bed_id', 'bedId'),
           bed_name: this.pick(ev, 'bed_name', 'bedName'),
           bed_number: this.pick(ev, 'bed_number', 'bedNumber'),
-          room_id: this.pick(ev, 'room_id', 'roomId'),
           room_name: this.pick(ev, 'room_name', 'roomName'),
-          room_number: this.pick(ev, 'room_number', 'roomNumber'),
           ward_name: this.pick(ev, 'ward_name', 'wardName'),
           floor_name: this.pick(ev, 'floor_name', 'floorName'),
           camera_available: !!this.pick(ev, 'camera_available', 'cameraAvailable'),
           camera_url: this.pick(ev, 'camera_url', 'cameraUrl'),
-          intercom_ip: this.pick(ev, 'intercom_ip', 'intercomIp')
         };
 
-        // If API doesn't send names, enrich from bedMap
         const bid = e.bed_id != null ? String(e.bed_id) : '';
         const b = bid ? this.data.bedMap[bid] : null;
         if (b) {
@@ -477,69 +561,65 @@
           e.floor_name = e.floor_name || b.floor_name;
         }
 
-        // If camera_available missing but camera is configured, infer availability
         const camConfigured = this.pick(ev, 'cameraConfigured', 'camera_configured');
-        if (e.camera_available === false && camConfigured === true) e.camera_available = true;
+        if (!e.camera_available && camConfigured === true) e.camera_available = true;
 
         return e;
       },
       normBed(b) {
         return {
           id: this.pick(b, 'id'),
-          room_id: this.pick(b, 'room_id', 'roomId'),
-          room_name: this.pick(b, 'room_name', 'roomName'),
           bed_name: this.pick(b, 'bed_name', 'bedName'),
           bed_number: this.pick(b, 'bed_number', 'bedNumber'),
-          camera_id: this.pick(b, 'camera_id', 'cameraId'),
-          status: this.pick(b, 'status'),
-          ip_address: this.pick(b, 'ip_address', 'ipAddress'),
+          room_name: this.pick(b, 'room_name', 'roomName'),
           ward_name: this.pick(b, 'ward_name', 'wardName'),
           floor_name: this.pick(b, 'floor_name', 'floorName')
         };
       },
-      // ----------------------------------------------------------------------
 
       async provideSidebar(){
-        try{
-          const r = await fetch("/sidebar.html");
-          if (!r.ok) return;
-          const el = document.getElementById("sidebar");
-          if (el) el.innerHTML = await r.text();
-        }catch{}
+        const targets = ["/sidebar.html", "/templates/sidebar.html"];
+        for (const url of targets) {
+          try{
+            const r = await fetch(url);
+            if (!r.ok) continue;
+            const el = document.getElementById("sidebar");
+            if (el) el.innerHTML = await r.text();
+            return;
+          }catch{}
+        }
       },
 
-      async init() {
+      async init(){
         await this.provideSidebar();
-        await this.loadCustomColors(true);
+        await this.loadCustomColors();
         await this.loadBeds();
         await this.loadActiveCalls();
 
         this.setupWebSocket();
-        await this.populateEventTypeFilter();
 
         setInterval(() => {
           if (this.data.autoRefresh) this.loadActiveCalls();
         }, 5000);
 
-        setInterval(() => this.loadCustomColors(true), 30000);
+        setInterval(() => this.loadCustomColors(), 30000);
 
-        setInterval(() => {
-          try {
-            if (this.data.ws && this.data.ws.readyState === 1) this.data.ws.send("ping");
-          } catch (e) {}
-        }, 15000);
-
-        setInterval(() => this.updateTimeLabels(), 1000);
-
-        document.getElementById('filter-event-type').addEventListener('change', (e) => {
-          this.data.selectedFilter = e.target.value;
-          this.forceRender();
+        document.addEventListener('fullscreenchange', () => {
+          const on = !!document.fullscreenElement;
+          document.body.classList.toggle('fsMode', on);
+          if (!on) document.body.classList.remove('fsSidebarOpen');
+          document.getElementById('fullscreen-text').textContent = on ? 'Exit Fullscreen' : 'Fullscreen';
         });
-      },
 
-      onSearch(v) {
-        this.data.searchQuery = (v || '').toLowerCase().trim();
-        this.forceRender();
+        // keyboard shortcuts in fullscreen
+        window.addEventListener('keydown', (e) => {
+          if (e.key === 'm' || e.key === 'M') {
+            if (document.fullscreenElement) this.toggleFsSidebar();
+          }
+          if (e.key === 'c' || e.key === 'C') this.toggleShowCameras();
+          if (e.key === 'a' || e.key === 'A') this.toggleAutoRefresh();
+          if (e.key === 'f' || e.key === 'F') this.toggleFullscreen();
+        });
       },
 
       setupWebSocket() {
@@ -548,7 +628,6 @@
 
         this.data.ws.onopen = () => this.updateWSStatus(true);
 
-        // IMPORTANT: we still refresh from API, but now it supports eventType/systemTimestamp too
         this.data.ws.onmessage = () => {
           clearTimeout(this._wsDebounceTimer);
           this._wsDebounceTimer = setTimeout(() => this.loadActiveCalls(), 200);
@@ -574,35 +653,10 @@
         }
       },
 
-      applyThemeIfProvided(data){
-        const scheme = data?.scheme || data?.theme || data?.active_scheme || null;
-        if (!scheme || typeof scheme !== 'object') return;
-
-        const map = {
-          bg1: scheme.bg1, bg2: scheme.bg2,
-          text: scheme.text || scheme.fg || scheme.text_color,
-          muted: scheme.muted || scheme.muted_text || scheme.subtext,
-          border: scheme.border || scheme.border_color,
-          accent: scheme.accent || scheme.primary || scheme.primary_color,
-          accent2: scheme.accent2,
-        };
-
-        const root = document.documentElement.style;
-        if (map.bg1) root.setProperty('--bg1', map.bg1);
-        if (map.bg2) root.setProperty('--bg2', map.bg2);
-        if (map.text) root.setProperty('--text', map.text);
-        if (map.muted) root.setProperty('--muted', map.muted);
-        if (map.border) root.setProperty('--border', map.border);
-        if (map.accent) root.setProperty('--accent', map.accent);
-        if (map.accent2) root.setProperty('--accent2', map.accent2);
-      },
-
-      async loadCustomColors(applyThemeAlso = true) {
+      async loadCustomColors() {
         try {
           const response = await fetch('/api/config/colors');
           const data = await response.json();
-
-          if (applyThemeAlso) this.applyThemeIfProvided(data);
 
           const next = {};
           const arr = data.colors || data || [];
@@ -619,69 +673,18 @@
         }
       },
 
-      async loadBeds() {
-        try {
-          const [floorsRes, wardsRes, roomsRes, bedsRes] = await Promise.all([
-            fetch('/api/config/floors'),
-            fetch('/api/config/wards'),
-            fetch('/api/config/rooms'),
-            fetch('/api/config/beds')
-          ]);
-
-          const floorsRaw = await floorsRes.json();
-          const wardsRaw  = await wardsRes.json();
-          const roomsRaw  = await roomsRes.json();
-          const bedsRaw   = await bedsRes.json();
-
-          const floors = floorsRaw.floors || floorsRaw || [];
-          const wards  = wardsRaw.wards  || wardsRaw  || [];
-          const rooms  = roomsRaw.rooms  || roomsRaw  || [];
-          const beds   = bedsRaw.beds    || bedsRaw   || [];
-
-          const floorMap = {}; (Array.isArray(floors) ? floors : []).forEach(f => {
-            const id = this.pick(f, 'id');
-            if (id != null) floorMap[id] = f;
-          });
-          const wardMap  = {}; (Array.isArray(wards) ? wards : []).forEach(w => {
-            const id = this.pick(w, 'id');
-            if (id != null) wardMap[id] = w;
-          });
-          const roomMap  = {}; (Array.isArray(rooms) ? rooms : []).forEach(r => {
-            const id = this.pick(r, 'id');
-            if (id != null) roomMap[id] = r;
-          });
-
+      async loadBeds(){
+        try{
+          const bedsRes = await fetch('/api/config/beds');
+          const bedsRaw = await bedsRes.json();
+          const beds = bedsRaw.beds || bedsRaw || [];
           const normBeds = (Array.isArray(beds) ? beds : []).map(b0 => this.normBed(b0));
-
-          this.data.beds = normBeds.map(b => {
-            const roomId = this.pick(b, 'room_id');
-            const room = roomMap[roomId] || {};
-            const wardId = this.pick(room, 'ward_id', 'wardId');
-            const ward = wardMap[wardId] || {};
-            const floorId = this.pick(ward, 'floor_id', 'floorId');
-            const floor = floorMap[floorId] || {};
-
-            return {
-              ...b,
-              room_name: b.room_name || this.pick(room, 'room_name', 'roomName') || 'Unknown Room',
-              ward_name: b.ward_name || this.pick(ward, 'name', 'ward_name', 'wardName') || '',
-              floor_name: b.floor_name || this.pick(floor, 'name', 'floor_name', 'floorName') || ''
-            };
-          });
-
-          this.data.beds.sort((a,b) => {
-            const r = (a.room_name || '').localeCompare(b.room_name || '');
-            if (r !== 0) return r;
-            const an = parseInt(a.bed_number || '0', 10);
-            const bn = parseInt(b.bed_number || '0', 10);
-            if (an !== bn) return an - bn;
-            return (a.bed_name || '').localeCompare(b.bed_name || '');
-          });
+          this.data.beds = normBeds;
 
           this.data.bedMap = {};
           this.data.beds.forEach(b => { this.data.bedMap[String(b.id)] = b; });
-        } catch (e) {
-          console.error("[calls] loadBeds error:", e);
+        }catch(e){
+          console.error("[calls] beds error:", e);
         }
       },
 
@@ -694,16 +697,14 @@
           const raw = await response.json();
           const events = this.asArray(raw);
 
-          // Normalize events so both `event_type` and `eventType` work
           const normalized = events.map(ev => this.normEvent(ev));
 
-          // Active = status active + has bed_id (supports bedId too via normEvent)
           const active = normalized.filter(e =>
             (String(e.status || '').toLowerCase() === 'active') &&
             e.bed_id != null
           );
 
-          // Keep latest per bed
+          // latest per bed
           const map = {};
           active.forEach(ev => {
             const bid = String(ev.bed_id);
@@ -718,7 +719,7 @@
           });
 
           this.data.activeByBed = map;
-          this.renderAll();
+          this.renderActiveOnly();
         } catch (e) {
           console.error("[calls] loadActiveCalls error:", e);
         } finally {
@@ -726,240 +727,26 @@
         }
       },
 
-      forceRender() {
-        this.data.lastRenderKey = '';
-        this.renderAll();
-      },
+      renderActiveOnly(){
+        const grid = document.getElementById('active-grid');
+        const activeCount = Object.keys(this.data.activeByBed || {}).length;
 
-      computeRenderKey() {
-        const keys = Object.keys(this.data.activeByBed).sort();
-        const parts = [
-          'A:' + keys.length,
-          'F:' + (this.data.selectedFilter || ''),
-          'C:' + (this.data.showCameras ? '1' : '0'),
-          'S:' + (this.data.searchQuery || '')
-        ];
-        keys.forEach(k => {
-          const ev = this.data.activeByBed[k] || {};
-          parts.push(k + ':' + (ev.event_type || ev.event || '') + ':' + (ev.system_timestamp || ''));
-        });
-        return parts.join('|');
-      },
+        const pill = document.getElementById('active-count-pill');
+        if (pill) pill.textContent = String(activeCount);
 
-      renderAll() {
-        const key = this.computeRenderKey();
-        if (key === this.data.lastRenderKey) return;
-        this.data.lastRenderKey = key;
+        if (activeCount === 0){
+          grid.innerHTML = `<div class="empty">No active calls</div>`;
+          return;
+        }
 
-        this.renderActiveTop();
-        this.renderBedsGrid();
-      },
-
-      matchesSearch(obj) {
-        const q = this.data.searchQuery;
-        if (!q) return true;
-
-        const hay = [
-          this.pick(obj,'bed_name','bedName'), this.pick(obj,'bed_number','bedNumber'),
-          this.pick(obj,'room_name','roomName'), this.pick(obj,'ward_name','wardName'),
-          this.pick(obj,'floor_name','floorName'), this.pick(obj,'event_type','eventType','event')
-        ].join(' ').toLowerCase();
-
-        return hay.includes(q);
-      },
-
-      renderActiveTop() {
-        const activeGrid = document.getElementById('active-grid');
-        const activeCountEl = document.getElementById('active-count');
-
-        let activeList = Object.values(this.data.activeByBed);
-        activeList = activeList.filter(ev => this.matchesSearch(ev));
-
-        activeList.sort((a,b) => {
+        let list = Object.values(this.data.activeByBed);
+        list.sort((a,b) => {
           const at = this.parseTs(a.system_timestamp)?.getTime() || 0;
           const bt = this.parseTs(b.system_timestamp)?.getTime() || 0;
           return bt - at;
         });
 
-        activeCountEl.textContent = `${activeList.length} Active`;
-
-        if (activeList.length === 0) {
-          activeGrid.innerHTML = `<div class="empty">No active calls</div>`;
-          return;
-        }
-
-        activeGrid.innerHTML = activeList.map(ev => this.cardHtml(ev)).join('');
-      },
-
-      renderBedsGrid() {
-        const grid = document.getElementById('beds-grid');
-
-        if (!this.data.beds || this.data.beds.length === 0) {
-          grid.innerHTML = `<div class="empty">No beds found. Add beds in Config.</div>`;
-          return;
-        }
-
-        let list = this.data.beds.map(b => {
-          const ev = this.data.activeByBed[String(b.id)] || null;
-          return { bed: b, ev };
-        });
-
-        list = list.filter(x => this.matchesSearch(x.ev || x.bed));
-
-        const f = (this.data.selectedFilter || '').toLowerCase();
-        if (f) {
-          if (f === 'idle') list = list.filter(x => !x.ev);
-          else list = list.filter(x => x.ev && ((x.ev.event_type || x.ev.event || '').toLowerCase() === f));
-        }
-
-        list.sort((a,b) => (b.ev ? 1 : 0) - (a.ev ? 1 : 0));
-
-        grid.innerHTML = list.map(x => x.ev ? this.cardHtml(x.ev) : this.idleCardHtml(x.bed)).join('');
-      },
-
-      cardHtml(call) {
-        // event_type is normalized, but keep fallbacks
-        const eventType = call.event_type || call.eventType || call.event || 'Unknown';
-        const color = this.getEventColor(eventType);
-        const soft = this.hexToRgba(color, 0.14);
-
-        const ts = call.system_timestamp || call.systemTimestamp || '';
-        const timeAgo = this.getTimeAgo(ts);
-
-        const title = call.bed_name || call.bedName || ('Bed ' + (call.bed_number || call.bedNumber || 'N/A'));
-        const subtitle = call.room_name || call.roomName || 'Room';
-
-        const floor = call.floor_name || call.floorName || '—';
-        const ward  = call.ward_name  || call.wardName  || '—';
-
-        const camAvail = !!(call.camera_available ?? call.cameraAvailable);
-        const camSrc = (this.data.showCameras && camAvail) ? this.getCameraSrc(call) : '';
-
-        return `
-          <div class="card" style="--ev:${color};--evSoft:${soft};">
-            <div class="cardTop">
-              <div class="cardTitle">
-                <div class="iconBox">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                    <path d="M6.6 10.8c1.7 3.3 3.9 5.5 7.2 7.2l2.4-2.4c.3-.3.8-.4 1.2-.3 1.3.4 2.7.7 4.1.7.7 0 1.2.5 1.2 1.2V21c0 .7-.5 1.2-1.2 1.2C10.7 22.2 1.8 13.3 1.8 2.7 1.8 2 2.3 1.5 3 1.5h3.9c.7 0 1.2.5 1.2 1.2 0 1.4.2 2.8.7 4.1.1.4 0 .9-.3 1.2L6.6 10.8z" fill="currentColor"/>
-                  </svg>
-                </div>
-                <div>
-                  <p class="t1">${this.escapeHtml(title)}</p>
-                  <p class="t2">${this.escapeHtml(subtitle)}</p>
-                </div>
-              </div>
-
-              <div class="badge">
-                <span class="miniDot"></span>
-                ${this.escapeHtml(eventType)}
-              </div>
-            </div>
-
-            <div class="meta">
-              <div>
-                <div class="k">FLOOR</div>
-                <div class="v">${this.escapeHtml(floor)}</div>
-              </div>
-              <div>
-                <div class="k">WARD</div>
-                <div class="v">${this.escapeHtml(ward)}</div>
-              </div>
-              <div>
-                <div class="k">TIME</div>
-                <div class="v js-time" data-ts="${ts}">${timeAgo}</div>
-              </div>
-              <div>
-                <div class="k">STATUS</div>
-                <div class="v">Active</div>
-              </div>
-            </div>
-
-            ${this.data.showCameras ? (
-              camAvail ? `
-                <div class="camera">
-                  <img src="${camSrc}"
-                       loading="lazy"
-                       decoding="async"
-                       onerror="this.outerHTML='<div class=&quot;camPlaceholder&quot;>❌ Camera not reachable</div>'" />
-                </div>
-              ` : `
-                <div class="camera"><div class="camPlaceholder">No camera available</div></div>
-              `
-            ) : ''}
-          </div>
-        `;
-      },
-
-      idleCardHtml(bed) {
-        const title = bed.bed_name || ('Bed ' + (bed.bed_number || 'N/A'));
-        const subtitle = bed.room_name || 'Room';
-
-        const floor = bed.floor_name || '—';
-        const ward  = bed.ward_name  || '—';
-
-        return `
-          <div class="card" style="--ev:rgba(100,116,139,.55);--evSoft:rgba(100,116,139,.10);">
-            <div class="cardTop">
-              <div class="cardTitle">
-                <div class="iconBox" style="color:rgba(100,116,139,.9);background:rgba(100,116,139,.10);">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                    <path d="M6 7a2 2 0 012-2h8a2 2 0 012 2v12H6V7zm2-4h8v2H8V3z" fill="currentColor"/>
-                  </svg>
-                </div>
-                <div>
-                  <p class="t1">${this.escapeHtml(title)}</p>
-                  <p class="t2">${this.escapeHtml(subtitle)}</p>
-                </div>
-              </div>
-
-              <div class="badge" style="color:rgba(100,116,139,.95);background:rgba(100,116,139,.10);">
-                <span class="miniDot" style="background:rgba(100,116,139,.85);"></span>
-                Idle
-              </div>
-            </div>
-
-            <div class="meta">
-              <div>
-                <div class="k">FLOOR</div>
-                <div class="v">${this.escapeHtml(floor)}</div>
-              </div>
-              <div>
-                <div class="k">WARD</div>
-                <div class="v">${this.escapeHtml(ward)}</div>
-              </div>
-              <div>
-                <div class="k">TIME</div>
-                <div class="v">—</div>
-              </div>
-              <div>
-                <div class="k">STATUS</div>
-                <div class="v">Idle</div>
-              </div>
-            </div>
-          </div>
-        `;
-      },
-
-      getCameraSrc(call) {
-        const cu = call.camera_url || call.cameraUrl;
-        if (cu) return cu;
-
-        const rn = call.room_name || call.roomName;
-        if (rn) return `/camera/${encodeURIComponent(rn)}`;
-        return '';
-      },
-
-      updateTimeLabels() {
-        document.querySelectorAll('.js-time').forEach(el => {
-          const ts = el.getAttribute('data-ts') || '';
-          el.textContent = this.getTimeAgo(ts);
-        });
-      },
-
-      getEventColor(eventType) {
-        const normalized = (eventType || '').toLowerCase().trim();
-        return this.data.customColors[normalized] || this.getDefaultColor(normalized);
+        grid.innerHTML = list.map(ev => this.cardHtml(ev)).join('');
       },
 
       getDefaultColor(t) {
@@ -971,20 +758,137 @@
           accept: '#10b981',
           cancel: '#6b7280',
           presence: '#06b6d4',
-          present: '#06b6d4',   // NEW: Present supported
+          present: '#06b6d4',
           reset: '#64748b',
-          unknown: '#64748b'
+          unknown: '#4f46e5'
         };
-        return defaults[t] || '#3b82f6';
+        return defaults[t] || '#4f46e5';
+      },
+      getEventColor(eventType) {
+        const normalized = String(eventType || '').toLowerCase().trim();
+        return this.data.customColors[normalized] || this.getDefaultColor(normalized);
       },
 
-      hexToRgba(hex, a) {
-        const h = String(hex || '').replace('#','');
-        if (h.length !== 6) return `rgba(79,70,229,${a})`;
-        const r = parseInt(h.slice(0,2),16);
-        const g = parseInt(h.slice(2,4),16);
-        const b = parseInt(h.slice(4,6),16);
-        return `rgba(${r},${g},${b},${a})`;
+      cardHtml(call){
+        const eventType = call.event_type || call.eventType || call.event || 'Unknown';
+
+        // Ring color = event color (Call=blue, Emergency=red, etc.)
+        const ring = this.getEventColor(eventType);
+
+        const floor = call.floor_name || call.floorName || '—';
+        const ward  = call.ward_name  || call.wardName  || '—';
+
+        const title = call.bed_name || call.bedName || ('Bed ' + (call.bed_number || call.bedNumber || 'N/A'));
+        const subtitle = call.room_name || call.roomName || '—';
+
+        const ts = call.system_timestamp || call.systemTimestamp || '';
+        const timeAgo = this.getTimeAgo(ts);
+
+        const camAvail = !!(call.camera_available ?? call.cameraAvailable);
+        const camSrc = this.getCameraSrc(call);
+
+        return `
+          <div class="card ringing" style="--ring:${this.escapeAttr(ring)};">
+            <div class="cardInner">
+
+              <div class="cardHead">
+                <div class="headLeft">
+                  <div class="callIcon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <path d="M6.6 10.8c1.7 3.3 3.9 5.5 7.2 7.2l2.4-2.4c.3-.3.8-.4 1.2-.3 1.3.4 2.7.7 4.1.7.7 0 1.2.5 1.2 1.2V21c0 .7-.5 1.2-1.2 1.2C10.7 22.2 1.8 13.3 1.8 2.7 1.8 2 2.3 1.5 3 1.5h3.9c.7 0 1.2.5 1.2 1.2 0 1.4.2 2.8.7 4.1.1.4 0 .9-.3 1.2L6.6 10.8z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <div class="hTitle">
+                    <p class="t1">${this.escapeHtml(title)}</p>
+                    <p class="t2">${this.escapeHtml(subtitle)}</p>
+                  </div>
+                </div>
+
+                <div class="badge" title="Event type">
+                  <span class="miniDot"></span>
+                  ${this.escapeHtml(eventType).toUpperCase()}
+                </div>
+              </div>
+
+              <div class="camera">
+                ${
+                  this.data.showCameras && camAvail
+                    ? `<img src="${camSrc}" loading="lazy" decoding="async"
+                          referrerpolicy="no-referrer"
+                          onerror="this.outerHTML='<div><svg class=&quot;camIcon&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot;><path d=&quot;M9 3h6l1 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3l1-2Zm3 16a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z&quot; fill=&quot;#9aa4b2&quot;/></svg><div class=&quot;camPlaceholderText&quot;>Camera not reachable</div></div>'" />`
+                    : `<div>
+                        <svg class="camIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path d="M9 3h6l1 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3l1-2Zm3 16a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" fill="#9aa4b2"/>
+                        </svg>
+                        <div class="camPlaceholderText">
+                          ${this.data.showCameras ? (camAvail ? 'Loading…' : 'No camera available') : 'Cameras hidden'}
+                        </div>
+                      </div>`
+                }
+              </div>
+
+              <div class="meta">
+                <div class="metaItem">
+                  <div class="k">Floor</div>
+                  <div class="v">${this.escapeHtml(floor)}</div>
+                </div>
+                <div class="metaItem">
+                  <div class="k">Ward</div>
+                  <div class="v">${this.escapeHtml(ward)}</div>
+                </div>
+                <div class="metaItem">
+                  <div class="k">Time</div>
+                  <div class="v">${this.escapeHtml(timeAgo)}</div>
+                </div>
+                <div class="metaItem">
+                  <div class="k">Status</div>
+                  <div class="v">Active</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        `;
+      },
+
+      getCameraSrc(call) {
+        const cu = call.camera_url || call.cameraUrl;
+        if (cu) return cu;
+        const bedName = call.bed_name || call.bedName || 'UnknownBed';
+        return `/camera/${encodeURIComponent(bedName)}`;
+      },
+
+      toggleShowCameras(){
+        this.data.showCameras = !this.data.showCameras;
+        const el = document.getElementById('camera-toggle-text');
+        if (el) el.textContent = this.data.showCameras ? 'Hide Cameras' : 'Show Cameras';
+        this.renderActiveOnly();
+      },
+
+      toggleAutoRefresh(){
+        this.data.autoRefresh = !this.data.autoRefresh;
+        const el = document.getElementById('auto-refresh-text');
+        if (el) el.textContent = this.data.autoRefresh ? 'ON' : 'OFF';
+      },
+
+      async toggleFullscreen(){
+        try{
+          if (!document.fullscreenElement){
+            await document.documentElement.requestFullscreen();
+          } else {
+            await document.exitFullscreen();
+          }
+        }catch(e){
+          console.warn("fullscreen error:", e);
+        }
+      },
+
+      toggleFsSidebar(){
+        if (!document.fullscreenElement) return;
+        document.body.classList.toggle('fsSidebarOpen');
+      },
+      closeFsSidebar(){
+        document.body.classList.remove('fsSidebarOpen');
       },
 
       parseTs(timestamp) {
@@ -1007,59 +911,16 @@
         return `${Math.floor(seconds / 86400)}d ago`;
       },
 
-      async populateEventTypeFilter() {
-        try {
-          const response = await fetch('/api/config/colors');
-          const data = await response.json();
-          const arr = data.colors || data || [];
-          const types = [...new Set(
-            (Array.isArray(arr) ? arr : []).map(c => (this.pick(c,'event_type','eventType') || '').toLowerCase().trim()).filter(Boolean)
-          )];
-
-          const select = document.getElementById('filter-event-type');
-          const existing = new Set([...select.options].map(o => o.value));
-          types.forEach(type => {
-            if (existing.has(type)) return;
-            const option = document.createElement('option');
-            option.value = type;
-            option.textContent = type.toUpperCase();
-            select.appendChild(option);
-          });
-
-          // Also ensure common types appear even if not in colors config
-          ['call','assistance','emergency','present','presence','reset'].forEach(t => {
-            if (existing.has(t)) return;
-            const option = document.createElement('option');
-            option.value = t;
-            option.textContent = t.toUpperCase();
-            select.appendChild(option);
-          });
-
-        } catch (e) {
-          console.error("[calls] filter error:", e);
-        }
-      },
-
-      toggleShowCameras() {
-        this.data.showCameras = !this.data.showCameras;
-        document.getElementById('camera-toggle-text').textContent =
-          this.data.showCameras ? 'Hide Cameras' : 'Show Cameras (Active Only)';
-        this.forceRender();
-      },
-
-      toggleAutoRefresh() {
-        this.data.autoRefresh = !this.data.autoRefresh;
-        document.getElementById('auto-refresh-text').textContent =
-          this.data.autoRefresh ? 'Auto Refresh: ON' : 'Auto Refresh: OFF';
-      },
-
       escapeHtml(s) {
         return String(s || '')
-          .replaceAll('&','&amp;')
-          .replaceAll('<','&lt;')
-          .replaceAll('>','&gt;')
-          .replaceAll('"','&quot;')
-          .replaceAll("'","&#039;");
+          .replace(/&/g,'&amp;')
+          .replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;')
+          .replace(/"/g,'&quot;')
+          .replace(/'/g,'&#039;');
+      },
+      escapeAttr(s) {
+        return this.escapeHtml(s).replace(/`/g, '&#096;');
       }
     };
 

@@ -12,7 +12,7 @@ from typing import Optional, Any, Dict
 
 import uvicorn
 import pymysql
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -25,7 +25,7 @@ from camera_stream import CameraManager
 from config import Config
 from models import (
     get_db_engine, get_db_session, init_database,
-    Floor, Ward, Room, Bed, Camera, Event, ColorScheme, CallSession,
+    Floor, Ward, Room, Bed, Camera, Event as EventModel, ColorScheme, CallSession,
     get_karachi_time
 )
 
@@ -36,6 +36,7 @@ engine = get_db_engine(
     Config.DB_SOCKET if Config.DB_USE_SOCKET else None
 )
 
+# NOTE: camera streams are keyed by BED NAME (primary), but we also support room-name fallback.
 camera_manager = CameraManager(use_simulation=False)
 active_connections: Dict[int, WebSocket] = {}
 
@@ -57,6 +58,16 @@ def _set_if_attr(obj, key: str, value: Any):
     if hasattr(obj, key):
         setattr(obj, key, value)
 
+def now_karachi_naive() -> datetime:
+    """
+    Use Karachi time but store/compare as naive datetime for MySQL DATETIME compatibility.
+    (Prevents aware/naive comparison issues in SQLAlchemy filters.)
+    """
+    try:
+        return get_karachi_time().replace(tzinfo=None)
+    except Exception:
+        return datetime.now()
+
 def ensure_column_safe(table: str, col: str, ddl: str):
     """
     Safe ALTER: runs only after tables exist.
@@ -65,9 +76,8 @@ def ensure_column_safe(table: str, col: str, ddl: str):
         inspector = inspect(engine)
         cols = [c["name"] for c in inspector.get_columns(table)]
         if col not in cols:
-            with engine.connect() as conn:
+            with engine.begin() as conn:
                 conn.execute(text(f"ALTER TABLE `{table}` ADD COLUMN {ddl}"))
-                conn.commit()
             print(f"[DB] Added column {table}.{col}")
     except Exception as e:
         print(f"[DB] ensure_column_safe warning: {e}")
@@ -122,9 +132,13 @@ def resolve_bed_by_ip(session, incoming_ip: str) -> Optional[Bed]:
     ip = _s(incoming_ip)
     if not ip:
         return None
-    return session.query(Bed).options(joinedload(Bed.room)).filter(
-        Bed.intercom_ip == ip
-    ).order_by(Bed.id.asc()).first()
+    return (
+        session.query(Bed)
+        .options(joinedload(Bed.room))
+        .filter(Bed.intercom_ip == ip)
+        .order_by(Bed.id.asc())
+        .first()
+    )
 
 def resolve_bed_in_room(session, room: Room, decoded: dict) -> Optional[Bed]:
     if not room:
@@ -176,10 +190,11 @@ def resolve_bed_in_room(session, room: Room, decoded: dict) -> Optional[Bed]:
 # ----------------- CallSession helper -----------------
 
 def get_or_create_call_session(session, bed_id, event_type):
-    cs = session.query(CallSession).filter(
-        CallSession.bed_id == bed_id,
-        CallSession.status == "active"
-    ).first()
+    cs = (
+        session.query(CallSession)
+        .filter(CallSession.bed_id == bed_id, CallSession.status == "active")
+        .first()
+    )
 
     if cs:
         cs.current_event_type = event_type
@@ -196,29 +211,55 @@ def get_or_create_call_session(session, bed_id, event_type):
     return cs
 
 
+# ----------------- Sidebar/HTML helper -----------------
+
+def _read_file(path: str) -> Optional[str]:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        return None
+
+
 # ----------------- Cameras / Serialization -----------------
 
 def get_room_camera(session, room: Room):
     if not room:
         return None
-    return session.query(Camera).filter(
-        Camera.room_id == room.id,
-        Camera.status == "active"
-    ).order_by(Camera.id.desc()).first()
+    # Room-based camera config (Camera.room_id)
+    return (
+        session.query(Camera)
+        .filter(Camera.room_id == room.id, Camera.status == "active")
+        .order_by(Camera.id.desc())
+        .first()
+    )
 
-def serialize_event_with_camera(session, event: Event):
+def _stream_key_for_event(bed: Optional[Bed], room: Optional[Room]) -> str:
+    """
+    Primary: BED NAME (as requested).
+    Fallback: ROOM NAME (supports room-level events + on-demand room camera stream).
+    """
+    if bed and _s(bed.bed_name):
+        return _room_key(bed.bed_name)
+    if room and _s(room.room_name):
+        return _room_key(room.room_name)
+    return ""
+
+def serialize_event_with_camera(session, event: EventModel):
     bed = event.bed
     room = event.room or (bed.room if bed else None)
     ward = room.ward if room else None
     floor = ward.floor if ward else None
 
     cam = get_room_camera(session, room)
-    room_name = _room_key(room.room_name if room else None)
+    stream_key = _stream_key_for_event(bed, room)
 
-    streaming_rooms = set(camera_manager.get_all_rooms())
-    camera_streaming = bool(room_name) and (room_name in streaming_rooms)
-    camera_live = bool(room_name) and camera_manager.has_frame(room_name)
-    cam_url = f"/camera/{quote(room_name, safe='')}" if camera_streaming else None
+    # If we have a configured camera OR an already-running stream, we can expose a camera URL.
+    streaming_keys = set(camera_manager.get_all_rooms())
+    is_running = bool(stream_key) and (stream_key in streaming_keys)
+    is_live = bool(stream_key) and camera_manager.has_frame(stream_key)
+
+    cam_url = f"/camera/{quote(stream_key, safe='')}" if (stream_key and (cam or is_running)) else None
 
     ts = event.system_timestamp
     ts_str = ts.strftime("%Y-%m-%dT%H:%M:%S") if ts else None
@@ -235,27 +276,28 @@ def serialize_event_with_camera(session, event: Event):
         "bedNumber": bed.bed_number if bed else None,
 
         "roomId": room.id if room else None,
-        "roomName": room_name or None,
+        "roomName": _room_key(room.room_name if room else None) or None,
         "roomNumber": room.room_number if room else None,
 
         "wardName": ward.name if ward else None,
         "floorName": floor.name if floor else None,
 
-        "cameraAvailable": camera_streaming,
-        "cameraLive": camera_live,
+        # Availability means "a camera is configured or a stream is running"
+        "cameraAvailable": True if (cam and stream_key) else is_running,
+        "cameraLive": is_live,
         "cameraUrl": cam_url,
         "cameraConfigured": True if cam else False,
 
         "intercomIp": getattr(bed, "intercom_ip", None) if bed else None,
     }
 
-def mjpeg_generator(room_name: str, fps: int = 10):
-    room_name = _room_key(room_name)
+def mjpeg_generator(stream_key: str, fps: int = 10):
+    stream_key = _room_key(stream_key)
     frame_delay = 1.0 / max(1, int(fps))
     last_placeholder = 0.0
 
     while True:
-        frame = camera_manager.get_frame(room_name)
+        frame = camera_manager.get_frame(stream_key)
 
         if frame:
             payload = frame
@@ -298,13 +340,27 @@ async def lifespan(app: FastAPI):
 
     session = get_db_session(engine)
     try:
-        cameras = session.query(Camera).options(joinedload(Camera.room)).filter(Camera.status == "active").all()
-        for cam in cameras:
-            if cam.room and cam.rtsp_url:
-                try:
-                    camera_manager.add_camera(cam.room.room_name, cam.rtsp_url)
-                except Exception as e:
-                    print(f"[Camera] Failed to start camera id={cam.id}: {e}")
+        # Load beds that have a camera linked (Bed.camera_id -> Camera.id)
+        beds = (
+            session.query(Bed)
+            .options(joinedload(Bed.camera))
+            .filter(Bed.camera_id.isnot(None))
+            .all()
+        )
+
+        for bed in beds:
+            if not _s(bed.bed_name):
+                continue
+
+            cam = bed.camera
+            if not cam or cam.status != "active" or not _s(cam.rtsp_url):
+                continue
+
+            try:
+                # stream key is bed.bed_name
+                camera_manager.add_camera(bed.bed_name, cam.rtsp_url)
+            except Exception as e:
+                print(f"[Camera] Failed to start camera for bed='{bed.bed_name}' (camera_id={bed.camera_id}): {e}")
     finally:
         session.close()
 
@@ -321,54 +377,112 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 async def get_home():
-    with open("templates/dashboard.html", "r") as f:
-        return HTMLResponse(content=f.read())
+    html = _read_file("templates/dashboard.html")
+    return HTMLResponse(content=html or "", status_code=200 if html else 404)
 
 @app.get("/calls")
 async def get_calls_page():
-    with open("templates/calls.html", "r") as f:
-        return HTMLResponse(content=f.read())
+    html = _read_file("templates/calls.html")
+    return HTMLResponse(content=html or "", status_code=200 if html else 404)
 
 @app.get("/history")
 async def get_history_page():
-    with open("templates/history.html", "r") as f:
-        return HTMLResponse(content=f.read())
+    html = _read_file("templates/history.html")
+    return HTMLResponse(content=html or "", status_code=200 if html else 404)
 
 @app.get("/config")
 async def get_config_page():
-    with open("templates/config.html", "r") as f:
-        return HTMLResponse(content=f.read())
+    html = _read_file("templates/config.html")
+    return HTMLResponse(content=html or "", status_code=200 if html else 404)
 
 @app.get("/sidebar.html")
 async def get_sidebar_html():
-    try:
-        with open("templates/sidebar.html", "r") as f:
-            return HTMLResponse(content=f.read())
-    except Exception:
-        return HTMLResponse(content="", status_code=404)
+    html = _read_file("templates/sidebar.html")
+    return HTMLResponse(content=html or "", status_code=200 if html else 404)
+
+# alias route so frontend calling /templates/sidebar.html won't 404
+@app.get("/templates/sidebar.html")
+async def get_sidebar_html_alias():
+    return await get_sidebar_html()
 
 
 # ----------------- Camera Streams -----------------
 
-@app.head("/camera/{room_name:path}")
-async def camera_by_room_head(room_name: str):
-    return Response(status_code=200)
+@app.get("/camera/{key:path}")
+async def camera_by_key(key: str):
+    """
+    Accepts either:
+      - bed_name (preferred, streams keyed by bed name)
+      - room_name / room_number (fallback; starts a room-keyed stream if a room camera exists)
+    """
+    key = _room_key(key)
 
-@app.get("/camera/{room_name:path}")
-async def camera_by_room(room_name: str):
-    room_name = _room_key(room_name)
+    session = get_db_session(engine)
+    try:
+        # 1) Try bed by bed_name
+        bed = (
+        session.query(Bed)
+        .options(joinedload(Bed.camera), joinedload(Bed.room))
+        .filter(
+            (func.lower(Bed.bed_name) == key.lower()) |
+            (func.lower(Bed.bed_number) == key.lower())
+        )
+        .first()
+    )
+    
 
-    if room_name not in camera_manager.get_all_rooms():
-        return JSONResponse(
-            {"ok": False, "success": False, "status": "error", "error": f"No active camera stream for room: {room_name}"},
-            status_code=404
+        if bed:
+            cam = bed.camera
+            if not cam or cam.status != "active" or not _s(cam.rtsp_url):
+                return JSONResponse(
+                    {"ok": False, "success": False, "status": "error", "error": f"No active camera for bed '{key}'"},
+                    status_code=404
+                )
+
+            # Ensure stream started (in case new config was added without restart)
+            if key not in set(camera_manager.get_all_rooms()):
+                camera_manager.add_camera(key, cam.rtsp_url)
+
+            return StreamingResponse(
+                mjpeg_generator(key, fps=10),
+                media_type="multipart/x-mixed-replace; boundary=frame",
+                headers={"Cache-Control": "no-store", "Pragma": "no-cache", "X-Accel-Buffering": "no"}
+            )
+
+        # 2) Fallback: try room by room_name or room_number
+        room = (
+            session.query(Room)
+            .filter(
+                (func.lower(Room.room_name) == key.lower()) |
+                (func.lower(Room.room_number) == key.lower())
+            )
+            .first()
         )
 
-    return StreamingResponse(
-        mjpeg_generator(room_name, fps=10),
-        media_type="multipart/x-mixed-replace; boundary=frame",
-        headers={"Cache-Control": "no-store", "Pragma": "no-cache", "X-Accel-Buffering": "no"}
-    )
+        if not room:
+            return JSONResponse(
+                {"ok": False, "success": False, "status": "error", "error": f"Bed/Room '{key}' not found"},
+                status_code=404
+            )
+
+        cam = get_room_camera(session, room)
+        if not cam or cam.status != "active" or not _s(cam.rtsp_url):
+            return JSONResponse(
+                {"ok": False, "success": False, "status": "error", "error": f"No active camera for room '{key}'"},
+                status_code=404
+            )
+
+        # Start a room-keyed stream on demand
+        if key not in set(camera_manager.get_all_rooms()):
+            camera_manager.add_camera(key, cam.rtsp_url)
+
+        return StreamingResponse(
+            mjpeg_generator(key, fps=10),
+            media_type="multipart/x-mixed-replace; boundary=frame",
+            headers={"Cache-Control": "no-store", "Pragma": "no-cache", "X-Accel-Buffering": "no"}
+        )
+    finally:
+        session.close()
 
 
 # ----------------- APIs -----------------
@@ -377,29 +491,31 @@ async def camera_by_room(room_name: str):
 async def get_stats():
     session = get_db_session(engine)
     try:
-        seven_days_ago = datetime.now() - timedelta(days=7)
-        one_hour_ago = datetime.now() - timedelta(hours=1)
+        now = now_karachi_naive()
+        seven_days_ago = now - timedelta(days=7)
+        one_hour_ago = now - timedelta(hours=1)
 
-        total_active = session.query(Event).filter(
-            Event.created_at >= seven_days_ago,
-            Event.status == "active"
+        # FIX: use EventModel everywhere
+        total_active = session.query(EventModel).filter(
+            EventModel.created_at >= seven_days_ago,
+            EventModel.status == "active"
         ).count()
 
-        urgent_alarms = session.query(Event).filter(
-            Event.created_at >= seven_days_ago,
-            Event.event_type.in_(("Emergency", "Alarm", "Assistance")),
-            Event.status == "active"
+        urgent_alarms = session.query(EventModel).filter(
+            EventModel.created_at >= seven_days_ago,
+            EventModel.event_type.in_(("Emergency", "Alarm", "Assistance")),
+            EventModel.status == "active"
         ).count()
 
-        ongoing_calls = session.query(Event).filter(
-            Event.created_at >= seven_days_ago,
-            Event.event_type == "Call",
-            Event.status == "active"
+        ongoing_calls = session.query(EventModel).filter(
+            EventModel.created_at >= seven_days_ago,
+            EventModel.event_type == "Call",
+            EventModel.status == "active"
         ).count()
 
-        recently_cleared = session.query(Event).filter(
-            Event.created_at >= one_hour_ago,
-            Event.status == "cleared"
+        recently_cleared = session.query(EventModel).filter(
+            EventModel.created_at >= one_hour_ago,
+            EventModel.status == "cleared"
         ).count()
 
         return {
@@ -415,11 +531,16 @@ async def get_stats():
 async def get_recent_events(limit: int = 100):
     session = get_db_session(engine)
     try:
-        events = session.query(Event).options(
-            joinedload(Event.bed).joinedload(Bed.room).joinedload(Room.ward).joinedload(Ward.floor),
-            joinedload(Event.room).joinedload(Room.ward).joinedload(Ward.floor),
-        ).order_by(Event.id.desc()).limit(limit).all()
-
+        events = (
+            session.query(EventModel)
+            .options(
+                joinedload(EventModel.bed).joinedload(Bed.room).joinedload(Room.ward).joinedload(Ward.floor),
+                joinedload(EventModel.room).joinedload(Room.ward).joinedload(Ward.floor),
+            )
+            .order_by(EventModel.id.desc())
+            .limit(limit)
+            .all()
+        )
         return [serialize_event_with_camera(session, e) for e in events]
     finally:
         session.close()
@@ -428,13 +549,17 @@ async def get_recent_events(limit: int = 100):
 async def api_calls(limit: int = 100, only_active: bool = True):
     session = get_db_session(engine)
     try:
-        q = session.query(Event).options(
-            joinedload(Event.bed).joinedload(Bed.room).joinedload(Room.ward).joinedload(Ward.floor),
-            joinedload(Event.room).joinedload(Room.ward).joinedload(Ward.floor),
-        ).order_by(Event.id.desc())
+        q = (
+            session.query(EventModel)
+            .options(
+                joinedload(EventModel.bed).joinedload(Bed.room).joinedload(Room.ward).joinedload(Ward.floor),
+                joinedload(EventModel.room).joinedload(Room.ward).joinedload(Ward.floor),
+            )
+            .order_by(EventModel.id.desc())
+        )
 
         if only_active:
-            q = q.filter(Event.status == "active")
+            q = q.filter(EventModel.status == "active")
 
         events = q.limit(limit).all()
         return [serialize_event_with_camera(session, e) for e in events]
@@ -447,17 +572,17 @@ async def api_timeline(days: int = 7):
     try:
         if days < 1:
             days = 1
-        start = datetime.now() - timedelta(days=days)
+        start = now_karachi_naive() - timedelta(days=days)
 
         rows = session.query(
-            func.date(Event.created_at).label("d"),
-            Event.event_type,
-            func.count(Event.id)
+            func.date(EventModel.created_at).label("d"),
+            EventModel.event_type,
+            func.count(EventModel.id)
         ).filter(
-            Event.created_at >= start
+            EventModel.created_at >= start
         ).group_by(
-            func.date(Event.created_at),
-            Event.event_type
+            func.date(EventModel.created_at),
+            EventModel.event_type
         ).all()
 
         timeline: Dict[str, Dict[str, int]] = {}
@@ -473,7 +598,7 @@ async def api_timeline(days: int = 7):
         session.close()
 
 
-# ----------------- Config GET endpoints (no duplicate keys) -----------------
+# ----------------- Config GET endpoints -----------------
 
 @app.get("/api/config/floors")
 async def get_floors():
@@ -992,12 +1117,11 @@ async def update_bed(bed_id: int, payload: BedUpsert):
 
         ip = _bed_ip(payload)
         if payload.ip_address is not None:
-            # uniqueness check if ip is being set
             if ip:
                 msg = _ensure_intercom_ip_unique(session, ip, ignore_bed_id=bed_id)
                 if msg:
                     return JSONResponse({"ok": False, "success": False, "status": "error", "error": msg}, status_code=400)
-            b.intercom_ip = ip  # allow setting None/"" -> null
+            b.intercom_ip = ip
 
         session.commit()
         session.refresh(b)
@@ -1127,7 +1251,7 @@ async def udp_listener():
         return
 
     print(f"🎧 Listening for L7700 UDP on {Config.UDP_IP}:{Config.UDP_PORT}")
-    print(f"⏰ {get_karachi_time().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"⏰ {now_karachi_naive().strftime('%Y-%m-%d %H:%M:%S')}")
 
     while True:
         try:
@@ -1140,27 +1264,22 @@ async def udp_listener():
 
             session = get_db_session(engine)
             try:
-                # 1) Best: Bed match by intercom_ip == incoming_ip (multi-bed correct)
                 bed = resolve_bed_by_ip(session, incoming_ip)
                 room = bed.room if bed else None
 
-                # 2) Fallback: if bed not found but room found by system_ip
                 if not room:
                     room = session.query(Room).filter(Room.system_ip == incoming_ip).first()
 
-                # 3) If room found but bed missing -> try resolve by decoded tokens (bedName / bedNumber)
                 if room and not bed:
                     bed = resolve_bed_in_room(session, room, decoded)
 
-                    # optional auto-learn ONLY if bed has no intercom_ip (safe)
                     if bed and not _s(getattr(bed, "intercom_ip", None)):
-                        # uniqueness guard
                         msg = _ensure_intercom_ip_unique(session, incoming_ip, ignore_bed_id=bed.id)
                         if not msg:
                             bed.intercom_ip = incoming_ip
                             session.commit()
 
-                system_time = get_karachi_time()
+                system_time = now_karachi_naive()
                 event_type = decoded.get("event") or "Unknown"
 
                 room_id = room.id if room else (bed.room_id if bed else None)
@@ -1187,7 +1306,7 @@ async def udp_listener():
 
                 print(f"[UDP] ip={incoming_ip} room={room.room_name if room else None} bed={bed.bed_name if bed else None} event={event_type}")
 
-                event = Event(
+                event = EventModel(
                     room_id=room_id,
                     bed_id=bed_id,
                     call_session_id=call_session_id,
@@ -1201,12 +1320,13 @@ async def udp_listener():
                 )
                 session.add(event)
                 session.commit()
+                session.refresh(event)
 
                 payload = serialize_event_with_camera(session, event)
                 message = json.dumps(payload)
 
                 dead = []
-                for cid, w in active_connections.items():
+                for cid, w in list(active_connections.items()):
                     try:
                         await w.send_text(message)
                     except Exception:
