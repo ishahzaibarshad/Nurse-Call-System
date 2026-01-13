@@ -12,9 +12,11 @@ from typing import Optional, Any, Dict
 
 import uvicorn
 import pymysql
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from pydantic import BaseModel, ConfigDict, Field, AliasChoices
 from sqlalchemy import inspect, func, text
@@ -214,6 +216,7 @@ def get_or_create_call_session(session, bed_id, event_type):
 # ----------------- Sidebar/HTML helper -----------------
 
 def _read_file(path: str) -> Optional[str]:
+    # kept for compatibility, but pages now use Jinja2Templates (TemplateResponse)
     try:
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
@@ -328,7 +331,7 @@ _PLACEHOLDER_JPEG = base64.b64decode(
     b"j6yN2s2j2yqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkq"
     b"gqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqk"
     b"qgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgq"
-    b"kqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqg//9k="
+    b"kqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqg//9k="
 )
 
 
@@ -371,39 +374,41 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
 
-# ----------------- Pages -----------------
+# ----------------- Pages (FIXED: Jinja rendering + dashboard route) -----------------
 
-@app.get("/")
-async def get_home():
-    html = _read_file("templates/dashboard.html")
-    return HTMLResponse(content=html or "", status_code=200 if html else 404)
+@app.get("/", include_in_schema=False)
+def root():
+    # default landing page
+    return RedirectResponse(url="/dashboard")
 
-@app.get("/calls")
-async def get_calls_page():
-    html = _read_file("templates/calls.html")
-    return HTMLResponse(content=html or "", status_code=200 if html else 404)
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard_page(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
-@app.get("/history")
-async def get_history_page():
-    html = _read_file("templates/history.html")
-    return HTMLResponse(content=html or "", status_code=200 if html else 404)
+@app.get("/calls", response_class=HTMLResponse)
+def calls_page(request: Request):
+    return templates.TemplateResponse("calls.html", {"request": request})
 
-@app.get("/config")
-async def get_config_page():
-    html = _read_file("templates/config.html")
-    return HTMLResponse(content=html or "", status_code=200 if html else 404)
+@app.get("/history", response_class=HTMLResponse)
+def history_page(request: Request):
+    return templates.TemplateResponse("history.html", {"request": request})
 
-@app.get("/sidebar.html")
-async def get_sidebar_html():
-    html = _read_file("templates/sidebar.html")
-    return HTMLResponse(content=html or "", status_code=200 if html else 404)
+@app.get("/config", response_class=HTMLResponse)
+def config_page(request: Request):
+    return templates.TemplateResponse("config.html", {"request": request})
 
-# alias route so frontend calling /templates/sidebar.html won't 404
-@app.get("/templates/sidebar.html")
-async def get_sidebar_html_alias():
-    return await get_sidebar_html()
+# optional: serve sidebar partial (some pages/js may fetch it)
+@app.get("/sidebar.html", response_class=HTMLResponse, include_in_schema=False)
+def sidebar_partial(request: Request):
+    return templates.TemplateResponse("sidebar.html", {"request": request})
+
+# alias so frontend calling /templates/sidebar.html won't 404
+@app.get("/templates/sidebar.html", response_class=HTMLResponse, include_in_schema=False)
+def sidebar_partial_alias(request: Request):
+    return templates.TemplateResponse("sidebar.html", {"request": request})
 
 
 # ----------------- Camera Streams -----------------
@@ -419,17 +424,16 @@ async def camera_by_key(key: str):
 
     session = get_db_session(engine)
     try:
-        # 1) Try bed by bed_name
+        # 1) Try bed by bed_name or bed_number
         bed = (
-        session.query(Bed)
-        .options(joinedload(Bed.camera), joinedload(Bed.room))
-        .filter(
-            (func.lower(Bed.bed_name) == key.lower()) |
-            (func.lower(Bed.bed_number) == key.lower())
+            session.query(Bed)
+            .options(joinedload(Bed.camera), joinedload(Bed.room))
+            .filter(
+                (func.lower(Bed.bed_name) == key.lower()) |
+                (func.lower(Bed.bed_number) == key.lower())
+            )
+            .first()
         )
-        .first()
-    )
-    
 
         if bed:
             cam = bed.camera
@@ -495,7 +499,6 @@ async def get_stats():
         seven_days_ago = now - timedelta(days=7)
         one_hour_ago = now - timedelta(hours=1)
 
-        # FIX: use EventModel everywhere
         total_active = session.query(EventModel).filter(
             EventModel.created_at >= seven_days_ago,
             EventModel.status == "active"

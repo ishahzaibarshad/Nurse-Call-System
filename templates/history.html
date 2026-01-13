@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Call History - Hospital Monitoring</title>
 
-  <link href="/static/css/output.css" rel="stylesheet">
-
+  <link href="/static/css/output.css" rel="stylesheet" />
   <style>
     :root{
       --bg1:#f6f7ff;
@@ -267,7 +266,9 @@
 <body>
   <div class="layout">
     <aside class="sidebar">
-      <div id="sidebar" class="shell"></div>
+      <div id="sidebar" class="shell">
+        {% include "sidebar.html" %}
+      </div>
     </aside>
 
     <main class="main">

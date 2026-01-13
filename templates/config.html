@@ -6,8 +6,7 @@
   <title>System Configuration - Hospital Monitoring</title>
 
   <!-- Keep your existing css -->
-  <link href="/static/css/output.css" rel="stylesheet">
-
+  <link href="/static/css/output.css" rel="stylesheet" />
   <!-- Beautiful UI fallback CSS (works even if tailwind not applied) -->
   <style>
     :root{
@@ -406,7 +405,9 @@
   <div class="layout">
     <!-- Sidebar (optional) -->
     <aside class="sidebar">
-      <div id="sidebar" class="shell"></div>
+      <div id="sidebar" class="shell">
+        {% include "sidebar.html" %}
+      </div>
     </aside>
 
     <main class="main">

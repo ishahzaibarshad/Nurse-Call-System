@@ -21,9 +21,6 @@
       --radius: 18px;
       --radius2: 22px;
 
-      --sidebar: #0b1220;
-      --sidebar2: #0f172a;
-
       --accent: #3b82f6;
     }
 
@@ -33,26 +30,31 @@
       background: var(--bg);
       color: var(--text);
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      min-height: 100vh;
     }
 
-    .app { display:flex; height:100vh; overflow:hidden; }
+    .app { display:flex; min-height:100vh; width:100%; }
 
-    /* ✅ Sidebar shell (ONLY container). Actual sidebar HTML is injected. */
-    .sidebar{
-      width: 110px;
-      padding: 14px;
-      flex: 0 0 auto;
-    }
+    /* ✅ Sidebar shell container (MATCH calls.html) */
+    .sidebar{ width: 250px; padding:18px; flex: 0 0 auto; }
     .sidebar .shell{
-      height: calc(100vh - 28px);
+      height: calc(100vh - 36px);
       border-radius: 22px;
-      background: linear-gradient(180deg, var(--sidebar), var(--sidebar2));
+      background: linear-gradient(180deg, rgba(17,24,39,.98), rgba(31,41,55,.96));
       box-shadow: var(--shadow2);
-      overflow: auto;
+      overflow:auto;
       border: 1px solid rgba(255,255,255,.08);
     }
+    .sidebar .shell, .sidebar .shell * { color:#fff; }
 
-    .main{ flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+    /* Active nav style */
+    .sidebar-item.is-active{
+      color:#fff !important;
+      background: rgba(255,255,255,.14) !important;
+      box-shadow: 0 10px 24px rgba(2,6,23,.18);
+    }
+
+    .main{ flex:1; min-width:0; display:flex; flex-direction:column; }
 
     /* Topbar */
     .topbar{
@@ -138,6 +140,8 @@
     .content{
       padding: 18px 22px 28px;
       overflow:auto;
+      flex: 1;
+      min-height: 0;
     }
 
     .stats{
@@ -147,12 +151,6 @@
     }
     @media(max-width: 1100px){
       .stats{ grid-template-columns: repeat(2, minmax(220px, 1fr)); }
-    }
-    @media(max-width: 760px){
-      .sidebar{ width: 92px; padding: 10px; }
-      .stats{ grid-template-columns: 1fr; }
-      .topbar{ padding: 16px; }
-      .content{ padding: 14px 16px 22px; }
     }
 
     .card{
@@ -275,23 +273,29 @@
     }
     .btnLink:hover{ background: rgba(37,99,235,.08); }
 
-    .chartBody{
-      padding: 14px 16px 18px;
-    }
+    .chartBody{ padding: 14px 16px 18px; }
     .chartWrap{
       position: relative;
       height: 320px;
       width: 100%;
+    }
+
+    /* ✅ Responsive (MATCH calls.html) */
+    @media (max-width: 1024px){
+      .sidebar{ display:none; }
+      .topbar{ padding: 16px; }
+      .content{ padding: 14px 16px 22px; }
+      .stats{ grid-template-columns: 1fr; }
     }
   </style>
 </head>
 
 <body>
   <div class="app">
-    <!-- ✅ Sidebar (Injected) -->
-    <aside class="Sidebar">
+    <!-- ✅ Sidebar (Server-side include) -->
+    <aside class="sidebar">
       <div class="shell">
-        <div data-sidebar-slot></div>
+        {% include "sidebar.html" %}
       </div>
     </aside>
 
@@ -413,234 +417,215 @@
     </main>
   </div>
 
-<script>
-  async function provideSidebar(){
-    const targets = ["/sidebar.html", "/templates/sidebar.html"];
+  <script>
+    // ✅ Highlight active sidebar item (works for all pages)
+    (function setActiveNav(){
+      const path = location.pathname === "/" ? "dashboard" : location.pathname.split("/")[1];
+      document.querySelectorAll("[data-nav]").forEach(a => {
+        a.classList.toggle("is-active", a.getAttribute("data-nav") === path);
+      });
+    })();
 
-    for (const url of targets) {
-      try{
-        const r = await fetch(url, { cache: "no-store" });
-        if (!r.ok) continue;
+    const app = {
+      data: {
+        stats: { total_active: 0, urgent_alarms: 0, ongoing_calls: 0, recently_cleared: 0 },
+        timeFilter: '7days',
+        timelineChart: null,
+        ws: null,
+        customColors: {},
+      },
 
-        const html = await r.text();
-        document.querySelectorAll("[data-sidebar-slot]").forEach(el => el.innerHTML = html);
-
-        // ✅ set active nav
-        const path = location.pathname === "/" ? "dashboard" : location.pathname.split("/")[1];
-        document.querySelectorAll("[data-nav]").forEach(a => {
-          a.classList.toggle("is-active", a.getAttribute("data-nav") === path);
-        });
-
-        return;
-      }catch(e){}
-    }
-  }
-
-  const app = {
-    data: {
-      stats: { total_active: 0, urgent_alarms: 0, ongoing_calls: 0, recently_cleared: 0 },
-      timeFilter: '7days',
-      timelineChart: null,
-      ws: null,
-      customColors: {},
-    },
-
-    async init() {
-      await provideSidebar();
-      await this.loadCustomColors(true);
-      this.setupWebSocket();
-      this.loadStats();
-      this.loadTimeline();
-      this.updateFilterButtons();
-
-      setInterval(() => this.loadStats(), 10000);
-      setInterval(() => this.loadTimeline(), 30000);
-      setInterval(() => this.loadCustomColors(true), 30000);
-    },
-
-    setupWebSocket() {
-      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      this.data.ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
-
-      this.data.ws.onmessage = () => {
+      async init() {
+        await this.loadCustomColors(true);
+        this.setupWebSocket();
         this.loadStats();
         this.loadTimeline();
-      };
+        this.updateFilterButtons();
 
-      this.data.ws.onclose = () => setTimeout(() => this.setupWebSocket(), 5000);
-    },
+        setInterval(() => this.loadStats(), 10000);
+        setInterval(() => this.loadTimeline(), 30000);
+        setInterval(() => this.loadCustomColors(true), 30000);
+      },
 
-    applyThemeIfProvided(data){
-      const scheme = data?.scheme || data?.theme || data?.active_scheme || null;
-      if (!scheme || typeof scheme !== 'object') return;
+      setupWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        this.data.ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
 
-      const map = {
-        bg: scheme.bg || scheme.background || scheme.page_bg,
-        panel: scheme.panel || scheme.surface || scheme.card_bg,
-        panel2: scheme.panel2 || scheme.surface2 || scheme.subtle_bg,
-        text: scheme.text || scheme.fg || scheme.text_color,
-        muted: scheme.muted || scheme.muted_text || scheme.subtext,
-        border: scheme.border || scheme.border_color,
-        sidebar: scheme.sidebar || scheme.sidebar_bg,
-        sidebar2: scheme.sidebar2 || scheme.sidebar_bg2,
-        accent: scheme.accent || scheme.primary || scheme.primary_color,
-      };
+        this.data.ws.onmessage = () => {
+          this.loadStats();
+          this.loadTimeline();
+        };
 
-      const root = document.documentElement.style;
-      if (map.bg) root.setProperty('--bg', map.bg);
-      if (map.panel) root.setProperty('--panel', map.panel);
-      if (map.panel2) root.setProperty('--panel2', map.panel2);
-      if (map.text) root.setProperty('--text', map.text);
-      if (map.muted) root.setProperty('--muted', map.muted);
-      if (map.border) root.setProperty('--border', map.border);
-      if (map.sidebar) root.setProperty('--sidebar', map.sidebar);
-      if (map.sidebar2) root.setProperty('--sidebar2', map.sidebar2);
-      if (map.accent) root.setProperty('--accent', map.accent);
-    },
+        this.data.ws.onclose = () => setTimeout(() => this.setupWebSocket(), 5000);
+      },
 
-    async loadCustomColors(applyThemeAlso = true) {
-      try {
-        const response = await fetch('/api/config/colors');
-        const data = await response.json();
+      applyThemeIfProvided(data){
+        const scheme = data?.scheme || data?.theme || data?.active_scheme || null;
+        if (!scheme || typeof scheme !== 'object') return;
 
-        if (applyThemeAlso) this.applyThemeIfProvided(data);
+        const map = {
+          bg: scheme.bg || scheme.background || scheme.page_bg,
+          panel: scheme.panel || scheme.surface || scheme.card_bg,
+          panel2: scheme.panel2 || scheme.surface2 || scheme.subtle_bg,
+          text: scheme.text || scheme.fg || scheme.text_color,
+          muted: scheme.muted || scheme.muted_text || scheme.subtext,
+          border: scheme.border || scheme.border_color,
+          accent: scheme.accent || scheme.primary || scheme.primary_color,
+        };
 
-        const next = {};
-        const arr = data.colors || data || [];
-        if (Array.isArray(arr)) {
-          arr.forEach(c => {
-            const key = String(c.event_type || c.eventType || '').toLowerCase().trim();
-            const col = c.color || c.primary_color || c.primaryColor;
-            if (key && col) next[key] = col;
-          });
+        const root = document.documentElement.style;
+        if (map.bg) root.setProperty('--bg', map.bg);
+        if (map.panel) root.setProperty('--panel', map.panel);
+        if (map.panel2) root.setProperty('--panel2', map.panel2);
+        if (map.text) root.setProperty('--text', map.text);
+        if (map.muted) root.setProperty('--muted', map.muted);
+        if (map.border) root.setProperty('--border', map.border);
+        if (map.accent) root.setProperty('--accent', map.accent);
+      },
+
+      async loadCustomColors(applyThemeAlso = true) {
+        try {
+          const response = await fetch('/api/config/colors');
+          const data = await response.json();
+
+          if (applyThemeAlso) this.applyThemeIfProvided(data);
+
+          const next = {};
+          const arr = data.colors || data || [];
+          if (Array.isArray(arr)) {
+            arr.forEach(c => {
+              const key = String(c.event_type || c.eventType || '').toLowerCase().trim();
+              const col = c.color || c.primary_color || c.primaryColor;
+              if (key && col) next[key] = col;
+            });
+          }
+          this.data.customColors = next;
+        } catch (e) {
+          console.error("[dashboard] colors error:", e);
         }
-        this.data.customColors = next;
-      } catch (e) {
-        console.error("[dashboard] colors error:", e);
-      }
-    },
+      },
 
-    async loadStats() {
-      try {
-        const response = await fetch('/api/stats');
-        const stats = await response.json();
-        this.data.stats = stats;
+      async loadStats() {
+        try {
+          const response = await fetch('/api/stats');
+          const stats = await response.json();
+          this.data.stats = stats;
 
-        document.getElementById('stat-total').textContent = stats.total_active ?? 0;
-        document.getElementById('stat-urgent').textContent = stats.urgent_alarms ?? 0;
-        document.getElementById('stat-calls').textContent = stats.ongoing_calls ?? 0;
-        document.getElementById('stat-cleared').textContent = stats.recently_cleared ?? 0;
-      } catch (e) {
-        console.error("[dashboard] Error loading stats:", e);
-      }
-    },
+          document.getElementById('stat-total').textContent = stats.total_active ?? 0;
+          document.getElementById('stat-urgent').textContent = stats.urgent_alarms ?? 0;
+          document.getElementById('stat-calls').textContent = stats.ongoing_calls ?? 0;
+          document.getElementById('stat-cleared').textContent = stats.recently_cleared ?? 0;
+        } catch (e) {
+          console.error("[dashboard] Error loading stats:", e);
+        }
+      },
 
-    async loadTimeline() {
-      try {
-        const days = this.getFilteredDays();
-        const response = await fetch(`/api/timeline?days=${days}`);
-        const data = await response.json();
-        this.renderTimelineChart(data.timeline || {});
-      } catch (e) {
-        console.error("[dashboard] Error loading timeline:", e);
-      }
-    },
+      async loadTimeline() {
+        try {
+          const days = this.getFilteredDays();
+          const response = await fetch(`/api/timeline?days=${days}`);
+          const data = await response.json();
+          this.renderTimelineChart(data.timeline || {});
+        } catch (e) {
+          console.error("[dashboard] Error loading timeline:", e);
+        }
+      },
 
-    renderTimelineChart(timelineData) {
-      const ctx = document.getElementById('timelineChart');
-      if (!ctx) return;
+      renderTimelineChart(timelineData) {
+        const ctx = document.getElementById('timelineChart');
+        if (!ctx) return;
 
-      const labels = Object.keys(timelineData).sort();
-      const datasets = {};
+        const labels = Object.keys(timelineData).sort();
+        const datasets = {};
 
-      labels.forEach(date => {
-        const dayObj = timelineData[date] || {};
-        Object.keys(dayObj).forEach(eventType => {
-          if (!datasets[eventType]) {
-            const col = this.getEventTypeColor(eventType);
-            datasets[eventType] = {
-              label: eventType,
-              data: [],
-              borderColor: col,
-              backgroundColor: this.hexToRgba(col, 0.18),
-              tension: 0.4,
-              fill: true
-            };
+        labels.forEach(date => {
+          const dayObj = timelineData[date] || {};
+          Object.keys(dayObj).forEach(eventType => {
+            if (!datasets[eventType]) {
+              const col = this.getEventTypeColor(eventType);
+              datasets[eventType] = {
+                label: eventType,
+                data: [],
+                borderColor: col,
+                backgroundColor: this.hexToRgba(col, 0.18),
+                tension: 0.4,
+                fill: true
+              };
+            }
+          });
+        });
+
+        labels.forEach(date => {
+          Object.keys(datasets).forEach(eventType => {
+            datasets[eventType].data.push((timelineData[date] || {})[eventType] || 0);
+          });
+        });
+
+        if (this.data.timelineChart) this.data.timelineChart.destroy();
+
+        this.data.timelineChart = new Chart(ctx, {
+          type: 'line',
+          data: { labels, datasets: Object.values(datasets) },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: true, position: 'top' } },
+            scales: { y: { beginAtZero: true } }
           }
         });
-      });
 
-      labels.forEach(date => {
-        Object.keys(datasets).forEach(eventType => {
-          datasets[eventType].data.push((timelineData[date] || {})[eventType] || 0);
+        document.getElementById('timeline-sub').textContent =
+          `Last ${Math.min(labels.length, this.getFilteredDays())} day(s)`;
+      },
+
+      getFilteredDays() {
+        const filterMap = { day: 1, '7days': 7, month: 30, year: 365, all: 3650 };
+        return filterMap[this.data.timeFilter] || 7;
+      },
+
+      setTimeFilter(filter) {
+        this.data.timeFilter = filter;
+        this.updateFilterButtons();
+        this.loadTimeline();
+      },
+
+      updateFilterButtons() {
+        document.querySelectorAll('#seg button').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.filter === this.data.timeFilter);
         });
-      });
+      },
 
-      if (this.data.timelineChart) this.data.timelineChart.destroy();
+      getEventTypeColor(type) {
+        const t = String(type || '').toLowerCase().trim();
+        if (this.data.customColors[t]) return this.data.customColors[t];
 
-      this.data.timelineChart = new Chart(ctx, {
-        type: 'line',
-        data: { labels, datasets: Object.values(datasets) },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: true, position: 'top' } },
-          scales: { y: { beginAtZero: true } }
-        }
-      });
+        const defaults = {
+          call: '#3b82f6',
+          emergency: '#ef4444',
+          alarm: '#f59e0b',
+          assistance: '#8b5cf6',
+          accept: '#10b981',
+          cancel: '#6b7280',
+          presence: '#06b6d4',
+          reset: '#64748b',
+          system: '#334155',
+          unknown: '#64748b'
+        };
+        return defaults[t] || '#3b82f6';
+      },
 
-      document.getElementById('timeline-sub').textContent =
-        `Last ${Math.min(labels.length, this.getFilteredDays())} day(s)`;
-    },
+      hexToRgba(hex, a) {
+        const h = String(hex || '').replace('#','');
+        if (h.length !== 6) return `rgba(59,130,246,${a})`;
+        const r = parseInt(h.slice(0,2),16);
+        const g = parseInt(h.slice(2,4),16);
+        const b = parseInt(h.slice(4,6),16);
+        return `rgba(${r},${g},${b},${a})`;
+      }
+    };
 
-    getFilteredDays() {
-      const filterMap = { day: 1, '7days': 7, month: 30, year: 365, all: 3650 };
-      return filterMap[this.data.timeFilter] || 7;
-    },
-
-    setTimeFilter(filter) {
-      this.data.timeFilter = filter;
-      this.updateFilterButtons();
-      this.loadTimeline();
-    },
-
-    updateFilterButtons() {
-      document.querySelectorAll('#seg button').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.filter === this.data.timeFilter);
-      });
-    },
-
-    getEventTypeColor(type) {
-      const t = String(type || '').toLowerCase().trim();
-      if (this.data.customColors[t]) return this.data.customColors[t];
-
-      const defaults = {
-        call: '#3b82f6',
-        emergency: '#ef4444',
-        alarm: '#f59e0b',
-        assistance: '#8b5cf6',
-        accept: '#10b981',
-        cancel: '#6b7280',
-        presence: '#06b6d4',
-        reset: '#64748b',
-        system: '#334155',
-        unknown: '#64748b'
-      };
-      return defaults[t] || '#3b82f6';
-    },
-
-    hexToRgba(hex, a) {
-      const h = String(hex || '').replace('#','');
-      if (h.length !== 6) return `rgba(59,130,246,${a})`;
-      const r = parseInt(h.slice(0,2),16);
-      const g = parseInt(h.slice(2,4),16);
-      const b = parseInt(h.slice(4,6),16);
-      return `rgba(${r},${g},${b},${a})`;
-    }
-  };
-
-  document.addEventListener('DOMContentLoaded', () => app.init());
-</script>
+    document.addEventListener('DOMContentLoaded', () => app.init());
+  </script>
 
 </body>
 </html>

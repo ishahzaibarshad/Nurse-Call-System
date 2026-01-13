@@ -28,6 +28,9 @@
 
       --radius:18px;
       --radius2:22px;
+
+      /* space taken by topbar + paddings when NOT fullscreen */
+      --chrome: 132px;
     }
 
     *{ box-sizing:border-box; }
@@ -50,22 +53,29 @@
     .sidebar{ width: 250px; padding:18px; }
     .sidebar .shell{
       height: calc(100vh - 36px);
-      border-radius: var(--radius2);
+      border-radius: 22px;
       background: linear-gradient(180deg, rgba(17,24,39,.98), rgba(31,41,55,.96));
       box-shadow: var(--shadow2);
       overflow:auto;
     }
-    .sidebar .shell *{ color:#fff; }
+    .sidebar .shell { color:#fff; }
+
+    .sidebar-item.is-active{
+      color:#fff !important;
+      background: rgba(148,163,184,.18) !important;
+    }
 
     /* Main */
     .main{ flex:1; padding: 18px 18px 28px; }
-    .container{ max-width: 1400px; margin: 0 auto; }
+
+    /* bigger working area */
+    .container{ max-width: 1800px; margin: 0 auto; }
 
     /* Top controls */
     .topbar{
       background: rgba(255,255,255,.92);
       border: 1px solid rgba(229,231,235,1);
-      border-radius: var(--radius2);
+      border-radius: 22px;
       box-shadow: var(--shadow);
       padding: 12px 14px;
       display:flex;
@@ -139,38 +149,74 @@
       box-shadow: 0 14px 34px rgba(79,70,229,.24);
     }
 
-    /* Active calls grid (LARGE cards) */
+    /* =========================
+       BIG CARDS GRID
+       ========================= */
     .gridWrap{ margin-top: 16px; }
+
     .grid{
       display:grid;
       gap: 18px;
-      grid-template-columns: repeat(2, minmax(520px, 1fr));
       align-items: stretch;
+      /* default: auto adjust */
+      grid-template-columns: repeat(auto-fit, minmax(620px, 1fr));
     }
-    @media (max-width: 1280px){
-      .grid{ grid-template-columns: 1fr; }
+
+    /* 1 active call => TRUE BIG full area */
+    .grid.one{
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    /* 2 active calls => 2 big cards side-by-side */
+    .grid.two{
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    /* 3+ calls => still 2 columns but slightly tighter */
+    .grid.many{
+      grid-template-columns: repeat(2, minmax(560px, 1fr));
+      gap: 14px;
     }
 
     /* ===== Card + Ring animation ===== */
     .card{
       position:relative;
-      border-radius: 28px;
-      overflow: visible; /* allow rings outside */
-      min-height: 720px;
+      border-radius: 34px;
+      overflow: visible;
+      min-height: 780px; /* bigger base */
     }
 
-    /* Inner actual card container */
     .cardInner{
       background: rgba(255,255,255,.92);
       border: 1px solid rgba(229,231,235,1);
-      border-radius: 28px;
+      border-radius: 34px;
       box-shadow: var(--shadow2);
       overflow:hidden;
       display:flex;
       flex-direction:column;
-      min-height: 720px;
+      min-height: 780px;
       position:relative;
       z-index: 2;
+    }
+
+    /* 1 call: fill the screen height */
+    .grid.one .card,
+    .grid.one .cardInner{
+      min-height: calc(100dvh - var(--chrome));
+    }
+
+    /* 2 calls: also fill height (big cards) */
+    .grid.two .card,
+    .grid.two .cardInner{
+      min-height: calc(100dvh - var(--chrome));
+    }
+
+    /* 3+ calls: keep cards big but not extreme */
+    .grid.many .card,
+    .grid.many .cardInner{
+      min-height: 640px;
     }
 
     /* Rings: show "call is coming" */
@@ -178,11 +224,11 @@
     .card.ringing::after{
       content:"";
       position:absolute;
-      inset: -12px;            /* ring outside */
-      border-radius: 34px;
+      inset: -12px;
+      border-radius: 40px;
       border: 2px solid rgba(79,70,229,.0);
       opacity: 0;
-      transform: scale(.98);
+      transform: scale(.985);
       pointer-events:none;
       z-index: 1;
     }
@@ -193,23 +239,22 @@
       animation: ringPulse 1.6s ease-out infinite;
     }
     .card.ringing::after{
-      inset: -22px;
+      inset: -24px;
       border-color: color-mix(in srgb, var(--ring, #4f46e5) 45%, transparent);
       animation: ringPulse2 1.6s ease-out infinite;
     }
 
     @keyframes ringPulse{
-      0%   { opacity:.65; transform: scale(.98); filter: blur(0px); }
+      0%   { opacity:.65; transform: scale(.985); filter: blur(0px); }
       60%  { opacity:.10; transform: scale(1.03); }
-      100% { opacity:0;   transform: scale(1.06); }
+      100% { opacity:0;   transform: scale(1.065); }
     }
     @keyframes ringPulse2{
-      0%   { opacity:.25; transform: scale(.98); }
-      75%  { opacity:.06; transform: scale(1.05); }
-      100% { opacity:0;   transform: scale(1.10); }
+      0%   { opacity:.25; transform: scale(.985); }
+      75%  { opacity:.06; transform: scale(1.055); }
+      100% { opacity:0;   transform: scale(1.12); }
     }
 
-    /* Reduce motion support */
     @media (prefers-reduced-motion: reduce){
       .card.ringing::before,
       .card.ringing::after{ animation:none; opacity:.25; transform:none; }
@@ -217,7 +262,7 @@
 
     /* Card header */
     .cardHead{
-      padding: 16px 18px;
+      padding: 18px 20px;
       display:flex;
       align-items:center;
       justify-content:space-between;
@@ -234,9 +279,9 @@
     }
 
     .callIcon{
-      width: 44px;
-      height: 44px;
-      border-radius: 16px;
+      width: 46px;
+      height: 46px;
+      border-radius: 18px;
       display:grid;
       place-items:center;
       background: rgba(37,99,235,.10);
@@ -251,10 +296,12 @@
       gap: 4px;
       min-width:0;
     }
+
+    /* Use clamp to look good on different screens */
     .hTitle .t1{
       margin:0;
       font-weight: 1100;
-      font-size: 22px;
+      font-size: clamp(18px, 1.1vw + 14px, 24px);
       letter-spacing:-0.02em;
       white-space: nowrap;
       overflow:hidden;
@@ -263,7 +310,7 @@
     .hTitle .t2{
       margin:0;
       color: var(--muted);
-      font-size: 13px;
+      font-size: clamp(11px, .5vw + 9px, 13px);
       font-weight: 800;
       white-space: nowrap;
       overflow:hidden;
@@ -289,21 +336,30 @@
       box-shadow: 0 0 0 4px rgba(79,70,229,.12);
     }
 
-    /* ===== Camera area: REMOVE BLUE CENTER COLOR ===== */
+    /* Camera area: bigger */
     .camera{
       margin: 14px 16px 0;
-      border-radius: 22px;
+      border-radius: 26px;
       border: 1px solid rgba(229,231,235,1);
       background:
         radial-gradient(520px 300px at 50% 40%, rgba(15,23,42,.06), transparent 65%),
         linear-gradient(180deg, #fafafa, #ffffff);
       flex:1;
-      min-height: 520px;
+      min-height: 620px;
       overflow:hidden;
       position:relative;
       display:grid;
       place-items:center;
     }
+
+    /* 1-call mode: let camera take maximum space */
+    .grid.one .camera{ min-height: 0; }
+
+    /* 2-call mode: still big but balanced */
+    .grid.two .camera{ min-height: 0; }
+
+    /* 3+ mode: slightly smaller */
+    .grid.many .camera{ min-height: 420px; }
 
     .camera img{
       width:100%;
@@ -323,7 +379,7 @@
 
     .meta{
       margin: 12px 16px 16px;
-      border-radius: 22px;
+      border-radius: 26px;
       border: 1px solid rgba(229,231,235,1);
       background: rgba(248,250,252,.96);
       padding: 14px 14px;
@@ -331,6 +387,7 @@
       grid-template-columns: 1fr 1fr;
       gap: 12px 18px;
     }
+
     .metaItem .k{
       font-size: 11px;
       font-weight: 1000;
@@ -344,6 +401,11 @@
       font-weight: 1000;
       color: var(--text);
     }
+
+    /* 1-call: smaller text to make camera feel bigger */
+    .grid.one .metaItem .k{ font-size: 10px; }
+    .grid.one .metaItem .v{ font-size: 14px; }
+    .grid.one .badge{ font-size: 11px; padding: 8px 10px; }
 
     .empty{
       padding: 26px;
@@ -360,6 +422,9 @@
     @media (max-width: 1024px){
       .sidebar{ display:none; }
       .main{ padding: 14px; }
+      .container{ max-width: none; }
+      .grid{ grid-template-columns: 1fr; }
+      .grid.two, .grid.many{ grid-template-columns: 1fr; }
     }
 
     /* =========================
@@ -367,6 +432,7 @@
        ========================= */
     body.fsMode{
       background: #f8fafc;
+      --chrome: 24px; /* topbar hidden in fullscreen */
     }
     body.fsMode .topbar{ display:none; }
     body.fsMode .main{ padding: 10px; }
@@ -453,7 +519,9 @@
 <body>
   <div class="layout">
     <aside class="sidebar">
-      <div id="sidebar" class="shell"></div>
+      <div id="sidebar" class="shell">
+        {% include "sidebar.html" %}
+      </div>
     </aside>
 
     <main class="main">
@@ -505,6 +573,15 @@
   <div id="fs-handle" class="fsHandle" title="Menu" onclick="app.toggleFsSidebar()">
     <div class="bars" aria-hidden="true"></div>
   </div>
+
+  <script>
+    (function setActiveNav(){
+      const path = location.pathname === "/" ? "dashboard" : location.pathname.split("/")[1];
+      document.querySelectorAll("[data-nav]").forEach(a => {
+        a.classList.toggle("is-active", a.getAttribute("data-nav") === path);
+      });
+    })();
+  </script>
 
   <script>
     const app = {
@@ -577,21 +654,7 @@
         };
       },
 
-      async provideSidebar(){
-        const targets = ["/sidebar.html", "/templates/sidebar.html"];
-        for (const url of targets) {
-          try{
-            const r = await fetch(url);
-            if (!r.ok) continue;
-            const el = document.getElementById("sidebar");
-            if (el) el.innerHTML = await r.text();
-            return;
-          }catch{}
-        }
-      },
-
       async init(){
-        await this.provideSidebar();
         await this.loadCustomColors();
         await this.loadBeds();
         await this.loadActiveCalls();
@@ -731,6 +794,11 @@
         const grid = document.getElementById('active-grid');
         const activeCount = Object.keys(this.data.activeByBed || {}).length;
 
+        // ✅ layout mode classes for BIG cards
+        grid.classList.toggle('one',  activeCount === 1);
+        grid.classList.toggle('two',  activeCount === 2);
+        grid.classList.toggle('many', activeCount >= 3);
+
         const pill = document.getElementById('active-count-pill');
         if (pill) pill.textContent = String(activeCount);
 
@@ -771,8 +839,6 @@
 
       cardHtml(call){
         const eventType = call.event_type || call.eventType || call.event || 'Unknown';
-
-        // Ring color = event color (Call=blue, Emergency=red, etc.)
         const ring = this.getEventColor(eventType);
 
         const floor = call.floor_name || call.floorName || '—';
