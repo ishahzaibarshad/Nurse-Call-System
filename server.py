@@ -9,31 +9,27 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from urllib.parse import quote
 from typing import Optional, Any, Dict
-from fastapi import HTTPException, status
 
 import uvicorn
 import pymysql
-from sqlalchemy import inspect, func  # <-- Ensure func is imported here
+from sqlalchemy import inspect, func, text
 from sqlalchemy.orm import joinedload
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import (
+    FastAPI, WebSocket, WebSocketDisconnect, Request, 
+    HTTPException, status, Form, Depends
+)
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from werkzeug.security import generate_password_hash, check_password_hash
-from fastapi import Form
+from passlib.context import CryptContext
 from starlette.middleware.sessions import SessionMiddleware
+
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String
-from fastapi import Depends
-from passlib.context import CryptContext
-
-
-
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy.orm import joinedload
 
 from decoder import decode_l7700_packet
 from camera_stream import CameraManager
@@ -47,69 +43,43 @@ from models import (
 
 # ----------------- Globals -----------------
 
+# Secret key for session handling
+SECRET_KEY = "your-secret-key-change-this-in-production"
+
+# Main database engine for hospital system
 engine = get_db_engine(
     Config.DATABASE_URL,
     Config.DB_SOCKET if Config.DB_USE_SOCKET else None
 )
 
-# NOTE: camera streams are keyed by BED NAME (primary), but we also support room-name fallback.
-camera_manager = CameraManager(use_simulation=False)
-active_connections: Dict[int, WebSocket] = {}
-
-
-app = FastAPI()
-
-# Secret key for session handling (change it for production)
-# app.secret_key = os.urandom(24)
-
-# Set up Jinja2 templates directory
-templates = Jinja2Templates(directory="templates")
-
-
-# Secret key for session handling (change it for production)
-app.secret_key = "your-secret-key"
-
-# Add middleware for session handling
-app.add_middleware(SessionMiddleware, secret_key=app.secret_key)
-
-# Initialize the password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# SQLAlchemy setup
+# User database engine for authentication
 SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root@localhost/hospital_monitor"
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+user_engine = create_engine(SQLALCHEMY_DATABASE_URL)
+UserSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=user_engine)
 
+# User model definition
 Base = declarative_base()
 
-# Define the User model (this will store hashed passwords)
 class User(Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
-    password_hash = Column(String)  # Store hashed passwords
+    password_hash = Column(String)
     role = Column(String)
 
-# Create tables in the database (this step is only needed once)
-Base.metadata.create_all(bind=engine)
+# Create user table if it doesn't exist
+Base.metadata.create_all(bind=user_engine)
 
-# Dependency to get the database session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Camera manager and active connections
+camera_manager = CameraManager(use_simulation=False)
+active_connections: Dict[int, WebSocket] = {}
 
-# Utility to get the current session data from cookies
-def get_current_session(request: Request):
-    return request.session.get("username")
+# Set up Jinja2 templates directory
+templates = Jinja2Templates(directory="templates")
 
-# Password hash verification function
-def check_password_hash(stored_password, provided_password):
-    return pwd_context.verify(provided_password, stored_password)
-
+# Initialize the password hashing context (bcrypt)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ----------------- Helpers -----------------
 
@@ -131,7 +101,6 @@ def _set_if_attr(obj, key: str, value: Any):
 def now_karachi_naive() -> datetime:
     """
     Use Karachi time but store/compare as naive datetime for MySQL DATETIME compatibility.
-    (Prevents aware/naive comparison issues in SQLAlchemy filters.)
     """
     try:
         return get_karachi_time().replace(tzinfo=None)
@@ -184,7 +153,6 @@ def init_database_tables():
         init_database(engine)
         print("[DB] Database and tables initialized successfully")
 
-        # ensure column exists
         ensure_column_safe("beds", "intercom_ip", "`intercom_ip` VARCHAR(50) NULL")
 
         inspector = inspect(engine)
@@ -194,7 +162,6 @@ def init_database_tables():
     except Exception as e:
         print(f"[DB] Error initializing database: {e}")
         raise
-
 
 # ----------------- Bed resolving (multi-bed safe) -----------------
 
@@ -224,7 +191,6 @@ def resolve_bed_in_room(session, room: Room, decoded: dict) -> Optional[Bed]:
         if v and v not in tokens:
             tokens.append(v)
 
-    # exact match bed_number / bed_name
     for t in tokens:
         tl = t.lower()
         for b in beds:
@@ -233,7 +199,6 @@ def resolve_bed_in_room(session, room: Room, decoded: dict) -> Optional[Bed]:
             if _s(getattr(b, "bed_name", "")).lower() == tl:
                 return b
 
-    # normalized fuzzy match
     ntokens = [_norm(t) for t in tokens if t]
     for b in beds:
         bn = _norm(_s(getattr(b, "bed_number", "")))
@@ -244,7 +209,6 @@ def resolve_bed_in_room(session, room: Room, decoded: dict) -> Optional[Bed]:
             if (nt in bname) or (nt in bn) or (bname and bname in nt) or (bn and bn in nt):
                 return b
 
-    # numeric match
     joined = " ".join(tokens)
     nums = re.findall(r"\b\d+\b", joined)
     if nums:
@@ -253,9 +217,7 @@ def resolve_bed_in_room(session, room: Room, decoded: dict) -> Optional[Bed]:
                 if _s(getattr(b, "bed_number", "")) == n:
                     return b
 
-    # fallback
     return sorted(beds, key=lambda x: x.id)[0]
-
 
 # ----------------- CallSession helper -----------------
 
@@ -280,24 +242,51 @@ def get_or_create_call_session(session, bed_id, event_type):
     session.commit()
     return cs
 
+# ----------------- Authentication Helpers -----------------
 
-# ----------------- Sidebar/HTML helper -----------------
-
-def _read_file(path: str) -> Optional[str]:
-    # kept for compatibility, but pages now use Jinja2Templates (TemplateResponse)
+def get_user_db():
+    """Dependency to get user database session"""
+    db = UserSessionLocal()
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
-    except Exception:
-        return None
+        yield db
+    finally:
+        db.close()
 
+def get_current_user(request: Request):
+    """Get current user from session"""
+    username = request.session.get("username")
+    role = request.session.get("role")
+    if not username or not role:
+        return None
+    return {"username": username, "role": role}
+
+def check_password_hash(stored_password, provided_password):
+    """Compare the stored password hash with the provided password"""
+    try:
+        return pwd_context.verify(provided_password, stored_password)
+    except Exception as e:
+        print(f"Error verifying password: {e}")
+        return False
+
+def rehash_passwords():
+    """Rehash passwords for existing users if needed"""
+    db = UserSessionLocal()
+    try:
+        users = db.query(User).all()
+        for user in users:
+            if not pwd_context.identify(user.password_hash):
+                print(f"Rehashing password for user {user.username}")
+                hashed_password = pwd_context.hash(user.password_hash)
+                user.password_hash = hashed_password
+                db.commit()
+    finally:
+        db.close()
 
 # ----------------- Cameras / Serialization -----------------
 
 def get_room_camera(session, room: Room):
     if not room:
         return None
-    # Room-based camera config (Camera.room_id)
     return (
         session.query(Camera)
         .filter(Camera.room_id == room.id, Camera.status == "active")
@@ -306,10 +295,6 @@ def get_room_camera(session, room: Room):
     )
 
 def _stream_key_for_event(bed: Optional[Bed], room: Optional[Room]) -> str:
-    """
-    Primary: BED NAME (as requested).
-    Fallback: ROOM NAME (supports room-level events + on-demand room camera stream).
-    """
     if bed and _s(bed.bed_name):
         return _room_key(bed.bed_name)
     if room and _s(room.room_name):
@@ -325,7 +310,6 @@ def serialize_event_with_camera(session, event: EventModel):
     cam = get_room_camera(session, room)
     stream_key = _stream_key_for_event(bed, room)
 
-    # If we have a configured camera OR an already-running stream, we can expose a camera URL.
     streaming_keys = set(camera_manager.get_all_rooms())
     is_running = bool(stream_key) and (stream_key in streaming_keys)
     is_live = bool(stream_key) and camera_manager.has_frame(stream_key)
@@ -353,7 +337,6 @@ def serialize_event_with_camera(session, event: EventModel):
         "wardName": ward.name if ward else None,
         "floorName": floor.name if floor else None,
 
-        # Availability means "a camera is configured or a stream is running"
         "cameraAvailable": True if (cam and stream_key) else is_running,
         "cameraLive": is_live,
         "cameraUrl": cam_url,
@@ -389,29 +372,24 @@ def mjpeg_generator(stream_key: str, fps: int = 10):
             payload + b"\r\n"
         )
 
+# Fixed base64 string for placeholder JPEG (1x1 black pixel)
 _PLACEHOLDER_JPEG = base64.b64decode(
-    b"/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxAQEBUQEA8QFQ8QDw8QDw8PDw8PFRUWFhUVFRUY"
-    b"HSggGBolGxUVITEhJSkrLi4uFx8zODMsNygtLisBCgoKDg0OGxAQGy0lICUtLS0tLS0tLS0tLS0t"
-    b"LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLf/AABEIAH4A5QMBIgACEQEDEQH/xAAX"
-    b"AAEBAQEAAAAAAAAAAAAAAAAAAQID/8QAHhAAAQQCAwEAAAAAAAAAAAAAAQACAxESITFBYXH/xAAX"
-    b"AQEBAQEAAAAAAAAAAAAAAAAAAQID/8QAHBEBAAICAwEAAAAAAAAAAAAAAAECEQMhEjFB/9oADAMB"
-    b"AAIRAxEAPwDqkYq0Gm1l8p3Wqkq6zq0gK1kQmQp7j2p0o3bGx1m2m1yYq1pWkq0c1QmGmQ+9T9m"
-    b"j6yN2s2j2yqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkq"
-    b"gqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqk"
-    b"qgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgq"
-    b"kqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqgqkqg//9k="
+    "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a"
+    "HBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIy"
+    "MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEB"
+    "AxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAA"
+    "AAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCVAAB//2Q=="
 )
-
 
 # ----------------- Lifespan -----------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_database_tables()
+    rehash_passwords()
 
     session = get_db_session(engine)
     try:
-        # Load beds that have a camera linked (Bed.camera_id -> Camera.id)
         beds = (
             session.query(Bed)
             .options(joinedload(Bed.camera))
@@ -428,7 +406,6 @@ async def lifespan(app: FastAPI):
                 continue
 
             try:
-                # stream key is bed.bed_name
                 camera_manager.add_camera(bed.bed_name, cam.rtsp_url)
             except Exception as e:
                 print(f"[Camera] Failed to start camera for bed='{bed.bed_name}' (camera_id={bed.camera_id}): {e}")
@@ -439,116 +416,211 @@ async def lifespan(app: FastAPI):
     yield
     camera_manager.shutdown()
 
-
+# ----------------- Create FastAPI app with lifespan -----------------
 app = FastAPI(lifespan=lifespan)
+
+# Add SessionMiddleware
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    session_cookie="session",
+    max_age=86400,
+)
+
+# Mount static files and set up templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# ----------------- Authentication Routes -----------------
 
-# ----------------- Pages (FIXED: Jinja rendering + dashboard route) -----------------
-
-# Root route - default landing page
 @app.get("/", include_in_schema=False)
-def root():
+async def root():
     return RedirectResponse(url="/login")
 
-# Login route (GET)
 @app.get("/login")
 async def get_login(request: Request):
-    return {"message": "Login form (Frontend)"}
+    return templates.TemplateResponse("login.html", {"request": request})
 
-# Login route (POST)
 @app.post("/login")
-async def login(request: Request, username: str = Form(...), password: str = Form(...), db: SessionLocal = Depends(get_db)):
-    # Fetch user from the database
+async def login(
+    request: Request, 
+    username: str = Form(...), 
+    password: str = Form(...),
+    db: Session = Depends(get_user_db)
+):
     user = db.query(User).filter(User.username == username).first()
     
-    # Check if the user exists and the password is correct
     if user and check_password_hash(user.password_hash, password):
-        # On successful authentication, store username and role in the session
         request.session["username"] = user.username
         request.session["role"] = user.role
         
-        # Redirect user based on their role
-        return RedirectResponse(url=f"/{user.role}/dashboard", status_code=303)
+        # Redirect based on role to the correct page
+        if user.role == "admin":
+            return RedirectResponse(url="/dashboard", status_code=303)
+        elif user.role == "staff":
+            return RedirectResponse(url="/calls", status_code=303)
+        elif user.role == "user":
+            return RedirectResponse(url="/user_calls", status_code=303)
+        else:
+            # Default fallback
+            return RedirectResponse(url="/login", status_code=303)
     else:
-        # If authentication fails, raise an error
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        return templates.TemplateResponse(
+            "login.html", 
+            {"request": request, "error": "Invalid credentials"}
+        )
 
-# Dashboard routes for each role (Admin, User, Staff)
-@app.get("/admin/dashboard")
+# ----------------- Role-Specific Page Routes -----------------
+
+# 1. ADMIN ROUTES - Admin can access ALL pages with sidebar
+@app.get("/dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
-    if get_current_session(request) and request.session.get("role") == "admin":
-        return {"message": "Admin Dashboard"}
-    return RedirectResponse(url="/login")
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    # Only admin can access dashboard
+    if user["role"] != "admin":
+        # Redirect non-admin users to their respective pages
+        if user["role"] == "staff":
+            return RedirectResponse(url="/calls")
+        elif user["role"] == "user":
+            return RedirectResponse(url="/user_calls")
+    
+    # Pass show_sidebar=True for admin
+    return templates.TemplateResponse(
+        "dashboard.html", 
+        {
+            "request": request, 
+            "user": user,
+            "show_sidebar": True
+        }
+    )
 
-@app.get("/user/dashboard")
-async def user_dashboard(request: Request):
-    if get_current_session(request) and request.session.get("role") == "user":
-        return {"message": "User Dashboard"}
-    return RedirectResponse(url="/login")
+# Admin can also access calls page (but with sidebar)
+@app.get("/calls", response_class=HTMLResponse)
+async def admin_calls_page(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    # Admin and staff can access calls page
+    if user["role"] not in ["admin", "staff"]:
+        if user["role"] == "user":
+            return RedirectResponse(url="/user_calls")
+    
+    # Pass show_sidebar=True for admin, False for staff
+    show_sidebar = user["role"] == "admin"
+    return templates.TemplateResponse(
+        "calls.html", 
+        {
+            "request": request, 
+            "user": user,
+            "show_sidebar": show_sidebar
+        }
+    )
 
-@app.get("/staff/dashboard")
-async def staff_dashboard(request: Request):
-    if get_current_session(request) and request.session.get("role") == "staff":
-        return {"message": "Staff Dashboard"}
-    return RedirectResponse(url="/login")
+# Admin can also access user_calls page (but with sidebar)
+@app.get("/user_calls", response_class=HTMLResponse)
+async def admin_user_calls_page(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    # Admin and user can access user_calls page
+    if user["role"] not in ["admin", "user"]:
+        if user["role"] == "staff":
+            return RedirectResponse(url="/calls")
+    
+    # Pass show_sidebar=True for admin, False for user
+    show_sidebar = user["role"] == "admin"
+    return templates.TemplateResponse(
+        "user_calls.html", 
+        {
+            "request": request, 
+            "user": user,
+            "show_sidebar": show_sidebar
+        }
+    )
 
-# Logout route to clear the session
-@app.get("/logout")
-def logout(request: Request):
-    request.session.clear()  # Clear session data
-    return RedirectResponse(url="/login")
+# Admin can access history page (with sidebar)
+@app.get("/history", response_class=HTMLResponse)
+async def history_page(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    # Only admin can access history page
+    if user["role"] != "admin":
+        # Redirect non-admin users to their respective pages
+        if user["role"] == "staff":
+            return RedirectResponse(url="/calls")
+        elif user["role"] == "user":
+            return RedirectResponse(url="/user_calls")
+    
+    return templates.TemplateResponse(
+        "history.html", 
+        {
+            "request": request, 
+            "user": user,
+            "show_sidebar": True
+        }
+    )
+
+# Admin can access config page (with sidebar)
+@app.get("/config", response_class=HTMLResponse)
+async def config_page(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    # Only admin can access config page
+    if user["role"] != "admin":
+        # Redirect non-admin users to their respective pages
+        if user["role"] == "staff":
+            return RedirectResponse(url="/calls")
+        elif user["role"] == "user":
+            return RedirectResponse(url="/user_calls")
+    
+    return templates.TemplateResponse(
+        "config.html", 
+        {
+            "request": request, 
+            "user": user,
+            "show_sidebar": True
+        }
+    )
+
+# 2. STAFF ROUTES - Staff can only access calls.html (without sidebar)
+# (The /calls route above handles both admin and staff)
+
+# 3. USER ROUTES - User can only access user_calls.html (without sidebar)
+# (The /user_calls route above handles both admin and user)
+
+# Sidebar partials
+@app.get("/sidebar.html", response_class=HTMLResponse, include_in_schema=False)
+async def sidebar_partial(request: Request):
+    user = get_current_user(request)
+    return templates.TemplateResponse("sidebar.html", {"request": request, "user": user})
+
+@app.get("/templates/sidebar.html", response_class=HTMLResponse, include_in_schema=False)
+async def sidebar_partial_alias(request: Request):
+    return await sidebar_partial(request)
 
 # Logout route
 @app.get("/logout")
-def logout():
-    response = RedirectResponse(url="/login")
-    response.delete_cookie("session")
-    return response
-
-
-@app.get("/dashboard", response_class=HTMLResponse)
-def dashboard_page(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
-
-@app.get("/calls", response_class=HTMLResponse)
-def calls_page(request: Request):
-    return templates.TemplateResponse("calls.html", {"request": request})
-
-@app.get("/history", response_class=HTMLResponse)
-def history_page(request: Request):
-    return templates.TemplateResponse("history.html", {"request": request})
-
-@app.get("/config", response_class=HTMLResponse)
-def config_page(request: Request):
-    return templates.TemplateResponse("config.html", {"request": request})
-
-# optional: serve sidebar partial (some pages/js may fetch it)
-@app.get("/sidebar.html", response_class=HTMLResponse, include_in_schema=False)
-def sidebar_partial(request: Request):
-    return templates.TemplateResponse("sidebar.html", {"request": request})
-
-# alias so frontend calling /templates/sidebar.html won't 404
-@app.get("/templates/sidebar.html", response_class=HTMLResponse, include_in_schema=False)
-def sidebar_partial_alias(request: Request):
-    return templates.TemplateResponse("sidebar.html", {"request": request})
-
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login")
 
 # ----------------- Camera Streams -----------------
 
 @app.get("/camera/{key:path}")
 async def camera_by_key(key: str):
-    """
-    Accepts either:
-      - bed_name (preferred, streams keyed by bed name)
-      - room_name / room_number (fallback; starts a room-keyed stream if a room camera exists)
-    """
     key = _room_key(key)
 
     session = get_db_session(engine)
     try:
-        # 1) Try bed by bed_name or bed_number
         bed = (
             session.query(Bed)
             .options(joinedload(Bed.camera), joinedload(Bed.room))
@@ -567,7 +639,6 @@ async def camera_by_key(key: str):
                     status_code=404
                 )
 
-            # Ensure stream started (in case new config was added without restart)
             if key not in set(camera_manager.get_all_rooms()):
                 camera_manager.add_camera(key, cam.rtsp_url)
 
@@ -577,7 +648,6 @@ async def camera_by_key(key: str):
                 headers={"Cache-Control": "no-store", "Pragma": "no-cache", "X-Accel-Buffering": "no"}
             )
 
-        # 2) Fallback: try room by room_name or room_number
         room = (
             session.query(Room)
             .filter(
@@ -600,7 +670,6 @@ async def camera_by_key(key: str):
                 status_code=404
             )
 
-        # Start a room-keyed stream on demand
         if key not in set(camera_manager.get_all_rooms()):
             camera_manager.add_camera(key, cam.rtsp_url)
 
@@ -612,8 +681,7 @@ async def camera_by_key(key: str):
     finally:
         session.close()
 
-
-# ----------------- APIs -----------------
+# ----------------- APIs (Accessible to all authenticated users) -----------------
 
 @app.get("/api/stats")
 async def get_stats():
@@ -724,7 +792,6 @@ async def api_timeline(days: int = 7):
     finally:
         session.close()
 
-
 # ----------------- Config GET endpoints -----------------
 
 @app.get("/api/config/floors")
@@ -815,17 +882,14 @@ async def get_colors():
     finally:
         session.close()
 
+# ----------------- Config CRUD endpoints -----------------
 
-# ----------------- ✅ Config CRUD (aliases friendly) -----------------
-
-# Updated FloorUpsert class (already corrected)
 class FloorUpsert(BaseModel):
     name: Optional[str] = Field(default=None, alias="name")
     floor_number: Optional[int] = Field(default=None, alias="floor_number")
     description: Optional[str] = None
     status: Optional[str] = None
 
-# Updated WardUpsert class (fixed the alias usage)
 class WardUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
     name: Optional[str] = Field(default=None, alias="name")
@@ -834,7 +898,6 @@ class WardUpsert(BaseModel):
     description: Optional[str] = None
     status: Optional[str] = None
 
-# Updated RoomUpsert class (fixed the alias usage)
 class RoomUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
     ward_id: Optional[int] = Field(default=None, alias="ward_id")
@@ -843,7 +906,6 @@ class RoomUpsert(BaseModel):
     system_ip: Optional[str] = Field(default=None, alias="system_ip")
     status: Optional[str] = None
 
-# Updated BedUpsert class (fixed the alias usage)
 class BedUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
     room_id: Optional[int] = Field(default=None, alias="room_id")
@@ -854,13 +916,11 @@ class BedUpsert(BaseModel):
     status: Optional[str] = Field(default=None, alias="status")
     ip_address: Optional[str] = Field(default=None, alias="ip_address")
 
-# Updated ColorUpsert class (fixed the alias usage)
 class ColorUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
     event_type: Optional[str] = Field(default=None, alias="event_type")
     color: Optional[str] = Field(default=None, alias="color")
 
-# Example utility functions for resolving room_id and IP.
 def _resolve_room_id_for_bed(session, payload: BedUpsert) -> Optional[int]:
     if payload.room_id:
         return int(payload.room_id)
@@ -910,7 +970,6 @@ def _ensure_intercom_ip_unique(session, ip: str, ignore_bed_id: Optional[int] = 
     if exists:
         return f"intercom ip '{ip}' already used by bed id={exists.id}"
     return None
-
 
 # ---------- Floors CRUD ----------
 @app.post("/api/config/floors")
@@ -991,7 +1050,6 @@ async def delete_floor(floor_id: int):
         return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
     finally:
         session.close()
-
 
 # ---------- Wards CRUD ----------
 @app.post("/api/config/wards")
@@ -1078,7 +1136,6 @@ async def delete_ward(ward_id: int):
     finally:
         session.close()
 
-
 # ---------- Rooms CRUD ----------
 @app.post("/api/config/rooms")
 @app.put("/api/config/rooms")
@@ -1090,7 +1147,6 @@ async def create_room(payload: RoomUpsert):
         for k, v in data.items():
             _set_if_attr(r, k, v)
 
-        # prevent duplicate system_ip
         rip = _s(getattr(r, "system_ip", None))
         if rip:
             exists = session.query(Room).filter(Room.system_ip == rip).first()
@@ -1173,16 +1229,9 @@ async def delete_room(room_id: int):
     finally:
         session.close()
 
-
 # ---------- Beds CRUD ----------
 @app.post("/api/config/beds")
 @app.put("/api/config/beds")
-@app.post("/api/config/bed")
-@app.put("/api/config/bed")
-@app.post("/api/beds")
-@app.put("/api/beds")
-@app.post("/api/bed")
-@app.put("/api/bed")
 async def create_bed(payload: BedUpsert):
     session = get_db_session(engine)
     try:
@@ -1222,8 +1271,6 @@ async def create_bed(payload: BedUpsert):
 @app.put("/api/config/beds/{bed_id}")
 @app.patch("/api/config/beds/{bed_id}")
 @app.post("/api/config/beds/{bed_id}")
-@app.post("/api/config/beds/{bed_id}/edit")
-@app.post("/api/config/beds/{bed_id}/update")
 async def update_bed(bed_id: int, payload: BedUpsert):
     session = get_db_session(engine)
     try:
@@ -1282,7 +1329,6 @@ async def delete_bed(bed_id: int):
         return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
     finally:
         session.close()
-
 
 # ---------- Colors CRUD ----------
 @app.post("/api/config/colors")
@@ -1351,7 +1397,6 @@ async def delete_color(color_id: int):
     finally:
         session.close()
 
-
 # ----------------- WebSocket -----------------
 
 @app.websocket("/ws")
@@ -1366,7 +1411,6 @@ async def websocket_endpoint(ws: WebSocket):
         pass
     finally:
         active_connections.pop(client_id, None)
-
 
 # ----------------- UDP Listener -----------------
 
@@ -1417,7 +1461,6 @@ async def udp_listener():
                 room_id = room.id if room else (bed.room_id if bed else None)
                 bed_id = bed.id if bed else None
 
-                # reset ends session
                 if event_type.lower() == "reset" and bed_id:
                     cs = session.query(CallSession).filter(
                         CallSession.bed_id == bed_id,
@@ -1474,7 +1517,6 @@ async def udp_listener():
 
         except Exception as e:
             print(f"✗ UDP loop error: {e}")
-
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host=Config.SERVER_HOST, port=Config.SERVER_PORT, reload=False)

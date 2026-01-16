@@ -28,16 +28,20 @@
 
       --radius:18px;
       --radius2:22px;
-
-      /* space taken by topbar + paddings when NOT fullscreen */
-      --chrome: 132px;
     }
 
-    *{ box-sizing:border-box; }
-    html, body{ height:100%; }
+    *{ 
+      box-sizing:border-box; 
+      margin: 0;
+      padding: 0;
+    }
+    
+    html, body{ 
+      height:100%;
+      overflow: hidden; /* Prevent body scrolling */
+    }
 
     body{
-      margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
       color:var(--text);
       background:
@@ -45,18 +49,70 @@
         radial-gradient(1100px 700px at 90% 5%, rgba(37,99,235,.08), transparent 55%),
         linear-gradient(180deg, var(--bg1), var(--bg2));
       min-height:100vh;
+      overflow: hidden; /* Prevent body scrolling */
     }
 
-    .layout{ display:flex; min-height:100vh; width:100%; }
+    .layout{ 
+      display:flex; 
+      height:100vh; 
+      width:100%;
+      overflow: hidden; /* Prevent layout scrolling */
+    }
 
-    /* Sidebar */
-    .sidebar{ width: 250px; padding:18px; }
+    /* Enhanced Logout Button */
+    .logout-btn {
+      position: fixed;
+      bottom: 0px;
+      left: 24px;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      font-size: 18px; /* Larger font */
+      font-weight: 900; /* Bolder */
+      padding: 16px 32px; /* Larger padding */
+      border-radius: 16px; /* More rounded */
+      z-index: 2000; /* Higher z-index */
+      box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      letter-spacing: 0.5px;
+      min-width: 160px; /* Ensure minimum size */
+      justify-content: center;
+    }
+
+    .logout-btn:hover {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(239, 68, 68, 0.45);
+    }
+
+    .logout-btn:active {
+      transform: translateY(-1px);
+    }
+
+    .logout-btn svg {
+      width: 24px; /* Larger icon */
+      height: 24px;
+    }
+
+    /* Sidebar - Hide for staff */
+    .sidebar{ 
+      width: 250px; 
+      padding:18px; 
+      height: 100vh;
+      overflow-y: auto; /* Allow sidebar scrolling only */
+      {% if role == 'staff' %}display: none !important;{% endif %}
+    }
     .sidebar .shell{
       height: calc(100vh - 36px);
       border-radius: 22px;
       background: linear-gradient(180deg, rgba(17,24,39,.98), rgba(31,41,55,.96));
       box-shadow: var(--shadow2);
-      overflow:auto;
+      overflow-y: auto;
     }
     .sidebar .shell { color:#fff; }
 
@@ -65,11 +121,37 @@
       background: rgba(148,163,184,.18) !important;
     }
 
-    /* Main */
-    .main{ flex:1; padding: 18px 18px 28px; }
+    /* Remove staff and logout text from sidebar bottom */
+    .sidebar .shell .staff-info,
+    .sidebar .shell .sidebar-logout {
+      display: none !important;
+    }
+
+    /* Main content area */
+    {% if role == 'staff' %}
+    .main{ 
+      flex:1; 
+      padding: 18px 18px 28px;
+      margin-left: 0;
+      width: 100%;
+      height: 100vh;
+      /* overflow-y: auto; Allow main content scrolling only */
+    }
+    {% else %}
+    .main{ 
+      flex:1; 
+      padding: 18px 18px 28px; 
+      height: 100vh;
+      /* overflow-y: auto; Allow main content scrolling only */
+    }
+    {% endif %}
 
     /* bigger working area */
-    .container{ max-width: 1800px; margin: 0 auto; }
+    .container{ 
+      max-width: 1800px; 
+      margin: 0 auto;
+      min-height: 100%;
+    }
 
     /* Top controls */
     .topbar{
@@ -77,17 +159,18 @@
       border: 1px solid rgba(229,231,235,1);
       border-radius: 22px;
       box-shadow: var(--shadow);
-      padding: 12px 14px;
+      padding: 16px 20px; /* Slightly more padding */
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap: 12px;
+      margin-top: 80px; /* More space for larger logout button */
     }
 
     .leftPills{
       display:flex;
       align-items:center;
-      gap:10px;
+      gap:12px; /* Slightly more gap */
       flex-wrap: wrap;
     }
 
@@ -95,18 +178,20 @@
       display:inline-flex;
       align-items:center;
       gap:10px;
-      padding: 9px 12px;
+      padding: 10px 14px; /* Slightly larger */
       border-radius: 999px;
       border: 1px solid rgba(229,231,235,1);
       background: #fff;
-      font-size: 12px;
+      font-size: 14px; /* Larger font */
       font-weight: 900;
       box-shadow: 0 8px 20px rgba(15,23,42,.06);
       white-space: nowrap;
     }
 
     .dot{
-      width: 10px; height: 10px; border-radius: 999px;
+      width: 12px; /* Slightly larger */
+      height: 12px; 
+      border-radius: 999px;
       background: var(--danger);
       box-shadow: 0 0 0 4px rgba(239,68,68,.16);
     }
@@ -118,7 +203,7 @@
     .rightActions{
       display:flex;
       align-items:center;
-      gap: 10px;
+      gap: 12px; /* Slightly more gap */
       flex-wrap: wrap;
       justify-content:flex-end;
     }
@@ -127,11 +212,11 @@
       border: 1px solid rgba(229,231,235,1);
       background: #fff;
       color: var(--text);
-      padding: 10px 14px;
+      padding: 12px 16px; /* Larger */
       border-radius: 999px;
       cursor:pointer;
-      font-weight: 1000;
-      font-size: 12px;
+      font-weight: 900;
+      font-size: 14px; /* Larger */
       transition: all .16s ease;
       display:inline-flex;
       align-items:center;
@@ -150,73 +235,78 @@
     }
 
     /* =========================
-       BIG CARDS GRID
+       BIG CARDS GRID - ENHANCED FOR VISIBILITY
        ========================= */
-    .gridWrap{ margin-top: 16px; }
+    .gridWrap{ 
+      margin-top: 20px; 
+      margin-bottom: 40px;
+    }
 
     .grid{
       display:grid;
-      gap: 18px;
+      gap: 20px; /* Slightly larger gap */
       align-items: stretch;
       /* default: auto adjust */
-      grid-template-columns: repeat(auto-fit, minmax(620px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(640px, 1fr)); /* Slightly larger min width */
     }
 
     /* 1 active call => TRUE BIG full area */
     .grid.one{
       grid-template-columns: 1fr;
-      gap: 14px;
+      gap: 16px;
     }
 
     /* 2 active calls => 2 big cards side-by-side */
     .grid.two{
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
+      gap: 18px;
     }
 
     /* 3+ calls => still 2 columns but slightly tighter */
     .grid.many{
-      grid-template-columns: repeat(2, minmax(560px, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(2, minmax(580px, 1fr));
+      gap: 16px;
     }
 
     /* ===== Card + Ring animation ===== */
     .card{
       position:relative;
-      border-radius: 34px;
+      border-radius: 36px; /* More rounded */
       overflow: visible;
-      min-height: 780px; /* bigger base */
+      min-height: 400px; /* Flexible height */
     }
 
     .cardInner{
-      background: rgba(255,255,255,.92);
+      background: rgba(255,255,255,.96); /* Slightly less transparent */
       border: 1px solid rgba(229,231,235,1);
-      border-radius: 34px;
+      border-radius: 36px; /* More rounded */
       box-shadow: var(--shadow2);
       overflow:hidden;
       display:flex;
       flex-direction:column;
-      min-height: 780px;
+      height: 100%;
+      min-height: 400px;
       position:relative;
       z-index: 2;
     }
 
-    /* 1 call: fill the screen height */
+    /* Make cards fill available space */
     .grid.one .card,
     .grid.one .cardInner{
-      min-height: calc(100dvh - var(--chrome));
+      min-height: calc(85vh - 120px);
+      height: auto;
     }
 
-    /* 2 calls: also fill height (big cards) */
     .grid.two .card,
     .grid.two .cardInner{
-      min-height: calc(100dvh - var(--chrome));
+      min-height: calc(85vh - 120px);
+      height: auto;
     }
 
-    /* 3+ calls: keep cards big but not extreme */
     .grid.many .card,
     .grid.many .cardInner{
-      min-height: 640px;
+      min-height: 500px;
+      height: auto;
     }
 
     /* Rings: show "call is coming" */
@@ -225,7 +315,7 @@
       content:"";
       position:absolute;
       inset: -12px;
-      border-radius: 40px;
+      border-radius: 44px; /* Match new border-radius */
       border: 2px solid rgba(79,70,229,.0);
       opacity: 0;
       transform: scale(.985);
@@ -260,32 +350,32 @@
       .card.ringing::after{ animation:none; opacity:.25; transform:none; }
     }
 
-    /* Card header */
+    /* Card header - ENHANCED VISIBILITY */
     .cardHead{
-      padding: 18px 20px;
+      padding: 22px 24px; /* More padding */
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap: 12px;
-      border-bottom: 1px solid rgba(229,231,235,1);
+      gap: 16px;
+      border-bottom: 2px solid rgba(229,231,235,1); /* Thicker border */
       background: rgba(248,250,252,.95);
     }
 
     .headLeft{
       display:flex;
       align-items:center;
-      gap: 14px;
+      gap: 16px; /* More gap */
       min-width:0;
     }
 
     .callIcon{
-      width: 46px;
-      height: 46px;
-      border-radius: 18px;
+      width: 52px; /* Larger */
+      height: 52px;
+      border-radius: 20px;
       display:grid;
       place-items:center;
-      background: rgba(37,99,235,.10);
-      border: 1px solid rgba(229,231,235,1);
+      background: rgba(37,99,235,.12); /* Slightly darker */
+      border: 2px solid rgba(229,231,235,1); /* Thicker border */
       color: rgba(37,99,235,1);
       flex: 0 0 auto;
     }
@@ -293,73 +383,84 @@
     .hTitle{
       display:flex;
       flex-direction:column;
-      gap: 4px;
+      gap: 6px; /* More gap */
       min-width:0;
     }
 
-    /* Use clamp to look good on different screens */
+    /* ENHANCED FOR VISIBILITY FROM FAR */
     .hTitle .t1{
       margin:0;
-      font-weight: 1100;
-      font-size: clamp(18px, 1.1vw + 14px, 24px);
-      letter-spacing:-0.02em;
+      font-weight: 1200; /* Heavier */
+      font-size: 32px; /* Much larger */
+      letter-spacing: -0.03em;
       white-space: nowrap;
       overflow:hidden;
       text-overflow: ellipsis;
+      color: var(--text);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .hTitle .t2{
       margin:0;
       color: var(--muted);
-      font-size: clamp(11px, .5vw + 9px, 13px);
-      font-weight: 800;
+      font-size: 18px; /* Larger */
+      font-weight: 900;
       white-space: nowrap;
       overflow:hidden;
       text-overflow: ellipsis;
+      letter-spacing: 0.02em;
     }
 
     .badge{
       display:inline-flex;
       align-items:center;
       gap: 10px;
-      padding: 9px 12px;
+      padding: 12px 16px; /* Larger */
       border-radius: 999px;
-      border: 1px solid rgba(229,231,235,1);
-      background: rgba(79,70,229,.08);
+      border: 2px solid rgba(229,231,235,1); /* Thicker border */
+      background: rgba(79,70,229,.10); /* Slightly darker */
       color: rgba(79,70,229,1);
-      font-size: 12px;
-      font-weight: 1100;
+      font-size: 16px; /* Larger */
+      font-weight: 1200; /* Heavier */
       white-space: nowrap;
+      letter-spacing: 0.05em;
     }
     .badge .miniDot{
-      width: 8px; height: 8px; border-radius: 999px;
+      width: 10px; /* Larger */
+      height: 10px; 
+      border-radius: 999px;
       background: rgba(79,70,229,1);
       box-shadow: 0 0 0 4px rgba(79,70,229,.12);
     }
 
-    /* Camera area: bigger */
+    /* Camera area */
     .camera{
-      margin: 14px 16px 0;
-      border-radius: 26px;
-      border: 1px solid rgba(229,231,235,1);
+      margin: 18px 20px 0; /* More margin */
+      border-radius: 28px;
+      border: 2px solid rgba(229,231,235,1); /* Thicker border */
       background:
         radial-gradient(520px 300px at 50% 40%, rgba(15,23,42,.06), transparent 65%),
         linear-gradient(180deg, #fafafa, #ffffff);
       flex:1;
-      min-height: 620px;
+      min-height: 300px; /* Reduced to make room for bigger text */
       overflow:hidden;
       position:relative;
       display:grid;
       place-items:center;
     }
 
-    /* 1-call mode: let camera take maximum space */
-    .grid.one .camera{ min-height: 0; }
+    /* Adjust camera height based on grid mode */
+    .grid.one .camera{ 
+      min-height: 400px; 
+      flex: 1.5; /* Take more space in single view */
+    }
 
-    /* 2-call mode: still big but balanced */
-    .grid.two .camera{ min-height: 0; }
+    .grid.two .camera{ 
+      min-height: 350px; 
+    }
 
-    /* 3+ mode: slightly smaller */
-    .grid.many .camera{ min-height: 420px; }
+    .grid.many .camera{ 
+      min-height: 250px; 
+    }
 
     .camera img{
       width:100%;
@@ -368,54 +469,97 @@
       display:block;
     }
 
-    .camIcon{ opacity:.55; width: 64px; height: 64px; }
+    .camIcon{ 
+      opacity:.55; 
+      width: 72px; /* Larger */
+      height: 72px; 
+    }
     .camPlaceholderText{
-      margin-top: 10px;
-      font-size: 12px;
+      margin-top: 12px;
+      font-size: 14px; /* Larger */
       font-weight: 900;
       color: rgba(100,116,139,.9);
       text-align:center;
     }
 
+    /* ENHANCED META SECTION - BIGGER TEXT FOR VISIBILITY */
     .meta{
-      margin: 12px 16px 16px;
-      border-radius: 26px;
-      border: 1px solid rgba(229,231,235,1);
+      margin: 18px 20px 20px; /* More margin */
+      border-radius: 28px;
+      border: 2px solid rgba(229,231,235,1); /* Thicker border */
       background: rgba(248,250,252,.96);
-      padding: 14px 14px;
+      padding: 20px 24px; /* More padding */
       display:grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px 18px;
+      gap: 20px 24px; /* More gap */
     }
 
+    .metaItem {
+      text-align: center;
+      padding: 12px 0;
+    }
+    
     .metaItem .k{
-      font-size: 11px;
+      font-size: 14px; /* Larger */
       font-weight: 1000;
-      letter-spacing: .08em;
+      letter-spacing: .1em; /* More spacing */
       color: rgba(100,116,139,.95);
       text-transform: uppercase;
-      margin-bottom: 6px;
+      margin-bottom: 12px; /* More space */
+      display: block;
     }
+    
+    /* ENHANCED FOR VISIBILITY FROM FAR */
     .metaItem .v{
-      font-size: 16px;
-      font-weight: 1000;
+      font-size: 36px; /* Much larger */
+      font-weight: 1200; /* Heavier */
       color: var(--text);
+      line-height: 1.2;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      letter-spacing: -0.02em;
+    }
+    
+    /* Special styling for time */
+    .metaItem .v.time-value {
+      color: var(--danger); /* Make time stand out */
+      font-weight: 1300;
+    }
+    
+    /* Special styling for status */
+    .metaItem .v.status-value {
+      color: var(--ok); /* Green for active status */
+      font-weight: 1300;
     }
 
-    /* 1-call: smaller text to make camera feel bigger */
-    .grid.one .metaItem .k{ font-size: 10px; }
-    .grid.one .metaItem .v{ font-size: 14px; }
-    .grid.one .badge{ font-size: 11px; padding: 8px 10px; }
+    /* Adjust for different grid modes */
+    .grid.one .metaItem .k{ font-size: 15px; }
+    .grid.one .metaItem .v{ font-size: 42px; } /* Even larger in single view */
+    .grid.one .badge{ 
+      font-size: 18px; 
+      padding: 14px 18px; 
+    }
+
+    .grid.two .metaItem .k{ font-size: 13px; }
+    .grid.two .metaItem .v{ font-size: 32px; }
+    .grid.two .badge{ 
+      font-size: 15px; 
+      padding: 11px 15px; 
+    }
 
     .empty{
-      padding: 26px;
+      padding: 40px; /* More padding */
       text-align:center;
       color: var(--muted);
       font-weight: 1000;
+      font-size: 20px; /* Larger */
       background: rgba(255,255,255,.88);
-      border: 1px dashed rgba(229,231,235,1);
-      border-radius: 26px;
+      border: 2px dashed rgba(229,231,235,1); /* Thicker border */
+      border-radius: 28px;
       box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
     }
 
     /* Responsive hide sidebar on small screens */
@@ -425,6 +569,12 @@
       .container{ max-width: none; }
       .grid{ grid-template-columns: 1fr; }
       .grid.two, .grid.many{ grid-template-columns: 1fr; }
+      .logout-btn {
+        top: 16px;
+        left: 16px;
+        padding: 14px 24px;
+        font-size: 16px;
+      }
     }
 
     /* =========================
@@ -432,14 +582,23 @@
        ========================= */
     body.fsMode{
       background: #f8fafc;
-      --chrome: 24px; /* topbar hidden in fullscreen */
     }
     body.fsMode .topbar{ display:none; }
     body.fsMode .main{ padding: 10px; }
     body.fsMode .container{ max-width: none; }
     body.fsMode .gridWrap{ margin-top: 0; }
+    
+    /* Fullscreen meta text even larger */
+    body.fsMode .metaItem .v {
+      font-size: 48px; /* Extra large in fullscreen */
+    }
+    
+    body.fsMode .hTitle .t1 {
+      font-size: 40px; /* Extra large in fullscreen */
+    }
 
-    /* Sidebar overlay drawer in fullscreen */
+    /* Sidebar overlay drawer in fullscreen - Hide for staff */
+    {% if role != 'staff' %}
     body.fsMode .sidebar{
       display:block;
       position: fixed;
@@ -459,7 +618,8 @@
       border-radius: 22px;
     }
     body.fsMode.fsSidebarOpen .sidebar{ pointer-events: auto; }
-    body.fsMode.fsSidebarOpen .sidebar .shell{ transform: translateX(0); }
+    body.fsMode.fsSidebarOpen .sidebar .shell{ transform: translateY(0); }
+    {% endif %}
 
     .fsBackdrop{
       position: fixed;
@@ -513,16 +673,93 @@
       border-radius: 999px;
       box-shadow: 0 4px 0 rgba(15,23,42,.75), 0 8px 0 rgba(15,23,42,.75);
     }
+
+    /* Hide fullscreen sidebar controls for staff */
+    {% if role == 'staff' %}
+    #fs-backdrop,
+    #fs-handle {
+      display: none !important;
+    }
+    {% endif %}
+
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+      .logout-btn {
+        top: 16px;
+        left: 16px;
+        padding: 14px 24px;
+        font-size: 16px;
+        min-width: 140px;
+      }
+      
+      .topbar {
+        margin-top: 70px;
+        flex-wrap: wrap;
+      }
+      
+      .meta {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      
+      .metaItem .v {
+        font-size: 28px;
+      }
+      
+      .hTitle .t1 {
+        font-size: 24px;
+      }
+      
+      .hTitle .t2 {
+        font-size: 14px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .logout-btn {
+        top: 12px;
+        left: 12px;
+        padding: 12px 20px;
+        font-size: 14px;
+        min-width: 120px;
+      }
+      
+      .logout-btn svg {
+        width: 18px;
+        height: 18px;
+      }
+      
+      .topbar {
+        margin-top: 60px;
+        padding: 12px 16px;
+      }
+      
+      .metaItem .v {
+        font-size: 24px;
+      }
+    }
   </style>
 </head>
 
 <body>
   <div class="layout">
+    <!-- Enhanced Logout Button - Shows for all roles -->
+    <a href="/logout" class="logout-btn" title="Logout">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17 16L21 12M21 12L17 8M21 12H9M13 16V17C13 18.6569 11.6569 20 10 20H6C4.34315 20 3 18.6569 3 17V7C3 5.34315 4.34315 4 6 4H10C11.6569 4 13 5.34315 13 7V8" 
+              stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>LOGOUT</span>
+    </a>
+
+    {% if role != 'staff' %}
     <aside class="sidebar">
       <div id="sidebar" class="shell">
         {% include "sidebar.html" %}
+        <!-- Note: Ensure sidebar.html doesn't have logout button -->
       </div>
     </aside>
+    {% endif %}
 
     <main class="main">
       <div class="container">
@@ -568,11 +805,13 @@
     </main>
   </div>
 
-  <!-- Fullscreen: backdrop + handle -->
+  <!-- Fullscreen: backdrop + handle - Hide for staff -->
+  {% if role != 'staff' %}
   <div id="fs-backdrop" class="fsBackdrop" onclick="app.closeFsSidebar()"></div>
   <div id="fs-handle" class="fsHandle" title="Menu" onclick="app.toggleFsSidebar()">
     <div class="bars" aria-hidden="true"></div>
   </div>
+  {% endif %}
 
   <script>
     (function setActiveNav(){
@@ -860,7 +1099,7 @@
               <div class="cardHead">
                 <div class="headLeft">
                   <div class="callIcon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
                       <path d="M6.6 10.8c1.7 3.3 3.9 5.5 7.2 7.2l2.4-2.4c.3-.3.8-.4 1.2-.3 1.3.4 2.7.7 4.1.7.7 0 1.2.5 1.2 1.2V21c0 .7-.5 1.2-1.2 1.2C10.7 22.2 1.8 13.3 1.8 2.7 1.8 2 2.3 1.5 3 1.5h3.9c.7 0 1.2.5 1.2 1.2 0 1.4.2 2.8.7 4.1.1.4 0 .9-.3 1.2L6.6 10.8z" fill="currentColor"/>
                     </svg>
                   </div>
@@ -904,11 +1143,11 @@
                 </div>
                 <div class="metaItem">
                   <div class="k">Time</div>
-                  <div class="v">${this.escapeHtml(timeAgo)}</div>
+                  <div class="v time-value">${this.escapeHtml(timeAgo)}</div>
                 </div>
                 <div class="metaItem">
                   <div class="k">Status</div>
-                  <div class="v">Active</div>
+                  <div class="v status-value">Active</div>
                 </div>
               </div>
 

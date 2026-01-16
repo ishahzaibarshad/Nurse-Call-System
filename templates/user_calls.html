@@ -3,19 +3,56 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Calls - Nurse Call System</title>
+  <title>Active Calls - Nurse Call System</title>
 
   <link href="/static/css/output.css" rel="stylesheet" />
 
   <style>
-    /* Retain the styles from your original calls.html page */
-    body {
-      background: linear-gradient(180deg, var(--bg1), var(--bg2));
-      min-height: 100vh;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-      color: var(--text);
+    :root {
+      --bg1: #f8fafc;
+      --bg2: #f1f5f9;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --shadow2: 0 10px 15px rgba(0, 0, 0, 0.15);
+      
+      /* Card background colors - different for each card */
+      --card-color-1: #dbeafe;  /* Light Blue */
+      --card-color-2: #dcfce7;  /* Light Green */
+      --card-color-3: #fef3c7;  /* Light Yellow */
+      --card-color-4: #fee2e2;  /* Light Red */
+      --card-color-5: #f3e8ff;  /* Light Purple */
+      --card-color-6: #ffedd5;  /* Light Orange */
+      --card-color-7: #e0e7ff;  /* Light Indigo */
+      --card-color-8: #f0f9ff;  /* Light Sky Blue */
+      --card-color-9: #fefce8;  /* Light Lime */
+      --card-color-10: #fff7ed; /* Light Amber */
+      
+      /* Accent colors */
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-yellow: #f59e0b;
+      --accent-purple: #8b5cf6;
+      --accent-pink: #ec4899;
     }
 
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
+      min-height: 100vh;
+      font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* Layout */
     .layout {
       display: flex;
       min-height: 100vh;
@@ -23,351 +60,920 @@
       flex-direction: column;
     }
 
-    /* Hide the sidebar for user_calls.html */
-    .sidebar {
-      display: none;
+    /* Logout Button */
+    .logout-btn {
+      position: fixed;
+      top: 24px;
+      left: 24px;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 14px 28px;
+      border-radius: 12px;
+      z-index: 1000;
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+    }
+
+    .logout-btn:hover {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4);
+    }
+
+    .logout-btn:active {
+      transform: translateY(-1px);
+    }
+
+    .logout-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Active Call Count Badge */
+    .active-count {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      background: linear-gradient(180deg, rgba(239, 68, 68, 0.95) 0%, rgba(185, 28, 28, 0.95) 100%);
+      color: white;
+      font-size: 18px;
+      font-weight: 800;
+      padding: 14px 24px;
+      border-radius: 12px;
+      z-index: 1000;
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .active-count::before {
+      content: '';
+      width: 12px;
+      height: 12px;
+      background: white;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
     }
 
     /* Main content area */
     .main {
       flex: 1;
-      padding: 18px;
+      padding: 24px;
+      padding-top: 100px; /* Add padding to account for fixed buttons */
     }
 
     .container {
       max-width: 1800px;
       margin: 0 auto;
+      width: 100%;
     }
 
-    /* Top controls (optional, you can hide if not needed) */
-    .topbar {
-      background: rgba(255, 255, 255, .92);
-      border: 1px solid rgba(229, 231, 235, 1);
-      border-radius: 22px;
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 30px 20px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
+      border-radius: 20px;
+      border: 1px solid rgba(203, 213, 225, 0.5);
       box-shadow: var(--shadow);
-      padding: 12px 14px;
+      backdrop-filter: blur(10px);
+    }
+
+    .header h1 {
+      font-size: 42px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      color: var(--text);
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .header p {
+      font-size: 18px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* Stats bar */
+    .stats-bar {
       display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      padding: 20px 30px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
+      border-radius: 16px;
+      border: 1px solid rgba(203, 213, 225, 0.5);
+      min-width: 180px;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s ease;
+    }
+
+    .stat-item:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow2);
+    }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--accent-blue);
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-size: 16px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
     }
 
     /* Grid of active calls */
     .gridWrap {
-      margin-top: 16px;
+      margin-top: 20px;
     }
 
+    /* Grid layout */
     .grid {
       display: grid;
-      gap: 18px;
-      align-items: stretch;
-      grid-template-columns: repeat(auto-fit, minmax(620px, 1fr));
+      gap: 28px;
+      grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+      justify-content: center;
     }
 
-    .empty {
-      padding: 26px;
-      text-align: center;
+    /* Call Cards with Different Colors */
+    .call-card {
+      background: linear-gradient(145deg, var(--card-bg, var(--card-color-1)), rgba(255, 255, 255, 0.8));
+      border-radius: 20px;
+      padding: 28px;
+      position: relative;
+      box-shadow: var(--shadow);
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      transition: all 0.3s ease;
+      min-height: 320px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .call-card:hover {
+      transform: translateY(-8px);
+      box-shadow: var(--shadow2);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    /* Different colors for cards - now 10 different light colors */
+    .call-card:nth-child(10n+1) { --card-bg: var(--card-color-1); }
+    .call-card:nth-child(10n+2) { --card-bg: var(--card-color-2); }
+    .call-card:nth-child(10n+3) { --card-bg: var(--card-color-3); }
+    .call-card:nth-child(10n+4) { --card-bg: var(--card-color-4); }
+    .call-card:nth-child(10n+5) { --card-bg: var(--card-color-5); }
+    .call-card:nth-child(10n+6) { --card-bg: var(--card-color-6); }
+    .call-card:nth-child(10n+7) { --card-bg: var(--card-color-7); }
+    .call-card:nth-child(10n+8) { --card-bg: var(--card-color-8); }
+    .call-card:nth-child(10n+9) { --card-bg: var(--card-color-9); }
+    .call-card:nth-child(10n+10) { --card-bg: var(--card-color-10); }
+
+    /* Status indicator */
+    .status-indicator {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.3);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+      }
+    }
+
+    /* Call header */
+    .call-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .call-type {
+      font-size: 26px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text);
+    }
+
+    .call-time {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.7);
+      padding: 8px 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Call details */
+    .call-details {
+      flex: 1;
+    }
+
+    .call-location {
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--text);
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .call-subtitle {
+      font-size: 20px;
       color: var(--muted);
-      font-weight: 1000;
-      background: rgba(255, 255, 255, .88);
-      border: 1px dashed rgba(229, 231, 235, 1);
-      border-radius: 26px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    /* Empty state */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 80px 40px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
+      border-radius: 20px;
+      border: 2px dashed var(--border);
+      margin-top: 40px;
+    }
+
+    .empty-icon {
+      font-size: 64px;
+      margin-bottom: 24px;
+      color: var(--muted);
+      opacity: 0.5;
+    }
+
+    .empty-title {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .empty-subtitle {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Connection status */
+    .connection-status {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 1000;
       box-shadow: var(--shadow);
     }
 
-    /* Cards (calls) */
-    .card {
-      position: relative;
-      border-radius: 34px;
-      overflow: visible;
-      min-height: 780px;
+    .connection-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ef4444;
     }
 
-    .cardInner {
-      background: rgba(255, 255, 255, .92);
-      border: 1px solid rgba(229, 231, 235, 1);
-      border-radius: 34px;
+    .connection-dot.connected {
+      background: #22c55e;
+      animation: pulse 2s infinite;
+    }
+
+    /* Auto-refresh indicator */
+    .auto-refresh {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      padding: 14px 20px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 1000;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .auto-refresh:hover {
+      transform: translateY(-2px);
       box-shadow: var(--shadow2);
-      display: flex;
-      flex-direction: column;
-      min-height: 780px;
     }
 
-    .cardHead {
-      padding: 18px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      border-bottom: 1px solid rgba(229, 231, 235, 1);
-      background: rgba(248, 250, 252, .95);
+    .refresh-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #3b82f6;
+      animation: blink 1.5s infinite;
     }
 
-    .headLeft {
-      display: flex;
-      align-items: center;
-      gap: 14px;
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
     }
 
-    .callIcon {
-      width: 46px;
-      height: 46px;
-      border-radius: 18px;
-      display: grid;
-      place-items: center;
-      background: rgba(37, 99, 235, .10);
-      border: 1px solid rgba(229, 231, 235, 1);
-      color: rgba(37, 99, 235, 1);
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+      .grid {
+        grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+        gap: 24px;
+      }
     }
 
-    .hTitle {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+    @media (max-width: 768px) {
+      .main {
+        padding: 20px;
+        padding-top: 90px;
+      }
+      
+      .grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      
+      .header {
+        padding: 24px 16px;
+      }
+      
+      .header h1 {
+        font-size: 32px;
+      }
+      
+      .stats-bar {
+        gap: 20px;
+      }
+      
+      .stat-item {
+        padding: 16px 24px;
+        min-width: 160px;
+      }
+      
+      .stat-value {
+        font-size: 30px;
+      }
+      
+      .call-card {
+        padding: 24px;
+        min-height: 280px;
+      }
+      
+      .call-location {
+        font-size: 28px;
+      }
+      
+      .active-count, .logout-btn {
+        top: 20px;
+        padding: 12px 20px;
+        font-size: 16px;
+      }
+      
+      .logout-btn {
+        left: 20px;
+      }
+      
+      .active-count {
+        right: 20px;
+      }
     }
 
-    .hTitle .t1 {
-      margin: 0;
-      font-weight: 1100;
-      font-size: clamp(18px, 1.1vw + 14px, 24px);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .hTitle .t2 {
-      margin: 0;
-      color: var(--muted);
-      font-size: clamp(11px, .5vw + 9px, 13px);
-      font-weight: 800;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .meta {
-      margin: 12px 16px 16px;
-      border-radius: 26px;
-      border: 1px solid rgba(229, 231, 235, 1);
-      background: rgba(248, 250, 252, .96);
-      padding: 14px 14px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px 18px;
-    }
-
-    .metaItem .k {
-      font-size: 11px;
-      font-weight: 1000;
-      color: rgba(100, 116, 139, .95);
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-
-    .metaItem .v {
-      font-size: 16px;
-      font-weight: 1000;
-      color: var(--text);
+    @media (max-width: 480px) {
+      .main {
+        padding: 16px;
+        padding-top: 80px;
+      }
+      
+      .header h1 {
+        font-size: 26px;
+      }
+      
+      .stats-bar {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .stat-item {
+        width: 100%;
+        max-width: 300px;
+      }
+      
+      .call-card {
+        padding: 20px;
+        min-height: 260px;
+      }
+      
+      .call-location {
+        font-size: 24px;
+      }
+      
+      .call-type {
+        font-size: 22px;
+      }
+      
+      .call-time {
+        font-size: 18px;
+      }
+      
+      .active-count, .logout-btn {
+        top: 16px;
+        padding: 10px 16px;
+        font-size: 14px;
+      }
+      
+      .logout-btn {
+        left: 16px;
+      }
+      
+      .active-count {
+        right: 16px;
+      }
+      
+      .logout-btn svg {
+        width: 16px;
+        height: 16px;
+      }
     }
   </style>
 </head>
 
 <body>
   <div class="layout">
+    <!-- Logout Button -->
+    <a href="/logout" class="logout-btn">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17 16L21 12M21 12L17 8M21 12H9M13 16V17C13 18.6569 11.6569 20 10 20H6C4.34315 20 3 18.6569 3 17V7C3 5.34315 4.34315 4 6 4H10C11.6569 4 13 5.34315 13 7V8" 
+              stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Logout
+    </a>
+
+    <!-- Active Call Count Badge -->
+    <div class="active-count" id="active-count-badge">
+      <span id="active-count">0</span> ACTIVE CALLS
+    </div>
+
     <main class="main">
       <div class="container">
-        <div class="topbar">
-          <div class="leftPills">
-            <div class="pill">
-              <span id="active-count-pill">0</span>
-              <span>Active</span>
-            </div>
-            <div class="pill" title="WebSocket status">
-              <span id="ws-status" class="dot"></span>
-              <span id="ws-text">Connecting</span>
-            </div>
+        <!-- Header -->
+        <div class="header">
+          <h1>ACTIVE CALLS MONITOR</h1>
+          <p>Real-time monitoring of nurse call system alerts</p>
+        </div>
+
+        <!-- Stats bar -->
+        <div class="stats-bar">
+          <div class="stat-item">
+            <div class="stat-value" id="total-calls">0</div>
+            <div class="stat-label">Total Calls</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="active-now">0</div>
+            <div class="stat-label">Active Now</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="last-updated">00:00</div>
+            <div class="stat-label">Last Updated</div>
           </div>
         </div>
 
-        <!-- ONLY ACTIVE CALLS -->
+        <!-- Grid of active calls -->
         <div class="gridWrap">
           <div id="active-grid" class="grid">
-            <div class="empty">Loading active calls...</div>
+            <!-- Calls will be inserted here by JavaScript -->
+            <div class="empty-state">
+              <div class="empty-icon">📞</div>
+              <div class="empty-title">No Active Calls</div>
+              <div class="empty-subtitle">When calls come in, they will appear here in real-time</div>
+            </div>
           </div>
         </div>
-
       </div>
     </main>
   </div>
 
-  <script>
-    (function setActiveNav(){
-      const path = location.pathname === "/" ? "dashboard" : location.pathname.split("/")[1];
-      document.querySelectorAll("[data-nav]").forEach(a => {
-        a.classList.toggle("is-active", a.getAttribute("data-nav") === path);
-      });
-    })();
+  <!-- Connection status -->
+  <div class="connection-status">
+    <div class="connection-dot" id="connection-dot"></div>
+    <span id="connection-text">Connecting...</span>
+  </div>
 
+  <!-- Auto-refresh indicator -->
+  <div class="auto-refresh">
+    <div class="refresh-dot"></div>
+    <span>Auto-refresh: <span id="refresh-status">ON</span></span>
+  </div>
+
+  <script>
+    // Main application object
     const app = {
       data: {
-        beds: [],
-        bedMap: {},
+        activeCalls: [],
         ws: null,
         autoRefresh: true,
-        customColors: {},
-        activeByBed: {},
-      },
-
-      _activeFetchInFlight: false,
-      _wsDebounceTimer: null,
-
-      // Keep the existing app methods as they are
-
-      async init(){
-        await this.loadCustomColors();
-        await this.loadBeds();
-        await this.loadActiveCalls();
-
-        this.setupWebSocket();
-
-        setInterval(() => {
-          if (this.data.autoRefresh) this.loadActiveCalls();
-        }, 5000);
-
-        document.addEventListener('fullscreenchange', () => {
-          const on = !!document.fullscreenElement;
-          document.body.classList.toggle('fsMode', on);
-          document.getElementById('fullscreen-text').textContent = on ? 'Exit Fullscreen' : 'Fullscreen';
-        });
-      },
-
-      async loadActiveCalls() {
-        if (this._activeFetchInFlight) return;
-        this._activeFetchInFlight = true;
-
-        try {
-          const response = await fetch('/api/events/recent?limit=200');
-          const raw = await response.json();
-          const events = this.asArray(raw);
-
-          const normalized = events.map(ev => this.normEvent(ev));
-
-          const active = normalized.filter(e =>
-            (String(e.status || '').toLowerCase() === 'active') &&
-            e.bed_id != null
-          );
-
-          const map = {};
-          active.forEach(ev => {
-            const bid = String(ev.bed_id);
-            const existing = map[bid];
-
-            const evTs = this.parseTs(ev.system_timestamp);
-            const exTs = existing ? this.parseTs(existing.system_timestamp) : null;
-
-            if (!existing || (evTs && exTs && evTs > exTs) || (evTs && !exTs)) {
-              map[bid] = ev;
-            }
-          });
-
-          this.data.activeByBed = map;
-          this.renderActiveOnly();
-        } catch (e) {
-          console.error("[calls] loadActiveCalls error:", e);
-        } finally {
-          this._activeFetchInFlight = false;
+        lastUpdate: null,
+        eventColors: {
+          'call': '#3b82f6',
+          'assist': '#f59e0b',
+          'wandering': '#ef4444',
+          'emergency': '#dc2626',
+          'default': '#8b5cf6'
         }
       },
 
-      renderActiveOnly(){
+      // Initialize the application
+      async init() {
+        console.log('Initializing user_calls application...');
+        
+        // Set up WebSocket connection
+        this.setupWebSocket();
+        
+        // Load initial data
+        await this.loadActiveCalls();
+        
+        // Set up auto-refresh
+        setInterval(() => {
+          if (this.data.autoRefresh) {
+            this.loadActiveCalls();
+          }
+        }, 5000); // Refresh every 5 seconds
+        
+        // Update last updated time every minute
+        setInterval(() => {
+          this.updateLastUpdated();
+        }, 60000);
+        
+        // Initial update
+        this.updateLastUpdated();
+        
+        console.log('Application initialized successfully');
+      },
+
+      // Set up WebSocket connection
+      setupWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const wsUrl = `${protocol}://${window.location.host}/ws`;
+        
+        console.log('Connecting to WebSocket:', wsUrl);
+        
+        try {
+          this.data.ws = new WebSocket(wsUrl);
+          
+          this.data.ws.onopen = () => {
+            console.log('WebSocket connected');
+            this.updateConnectionStatus(true);
+          };
+          
+          this.data.ws.onmessage = (event) => {
+            console.log('WebSocket message received:', event.data);
+            // When we receive a WebSocket message, refresh the calls
+            this.loadActiveCalls();
+          };
+          
+          this.data.ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            this.updateConnectionStatus(false);
+          };
+          
+          this.data.ws.onclose = () => {
+            console.log('WebSocket disconnected, reconnecting...');
+            this.updateConnectionStatus(false);
+            // Try to reconnect after 3 seconds
+            setTimeout(() => {
+              this.setupWebSocket();
+            }, 3000);
+          };
+        } catch (error) {
+          console.error('Failed to create WebSocket:', error);
+          this.updateConnectionStatus(false);
+        }
+      },
+
+      // Update connection status UI
+      updateConnectionStatus(connected) {
+        const dot = document.getElementById('connection-dot');
+        const text = document.getElementById('connection-text');
+        
+        if (connected) {
+          dot.classList.add('connected');
+          text.textContent = 'Connected';
+        } else {
+          dot.classList.remove('connected');
+          text.textContent = 'Disconnected';
+        }
+      },
+
+      // Load active calls from API
+      async loadActiveCalls() {
+        try {
+          console.log('Loading active calls...');
+          const response = await fetch('/api/events/recent?limit=50');
+          
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          // Process the data to get active calls
+          this.processCalls(data);
+          
+          // Update last updated time
+          this.data.lastUpdate = new Date();
+          this.updateLastUpdated();
+          
+          console.log(`Loaded ${this.data.activeCalls.length} active calls`);
+        } catch (error) {
+          console.error('Error loading active calls:', error);
+          // Show error state in UI
+          this.showErrorState();
+        }
+      },
+
+      // Process API response to extract active calls
+      processCalls(apiData) {
+        // Convert to array if needed
+        const events = Array.isArray(apiData) ? apiData : 
+                      (apiData.events || apiData.data || []);
+        
+        // Filter for active calls
+        const activeEvents = events.filter(event => {
+          const status = String(event.status || event.event_status || '').toLowerCase();
+          return status === 'active';
+        });
+        
+        // Sort by timestamp (newest first)
+        activeEvents.sort((a, b) => {
+          const timeA = this.parseTimestamp(a.system_timestamp || a.timestamp || a.created_at);
+          const timeB = this.parseTimestamp(b.system_timestamp || b.timestamp || b.created_at);
+          return timeB - timeA;
+        });
+        
+        // Store active calls
+        this.data.activeCalls = activeEvents;
+        
+        // Update UI
+        this.renderCalls();
+        
+        // Update stats
+        this.updateStats();
+      },
+
+      // Parse timestamp string to Date object
+      parseTimestamp(timestamp) {
+        if (!timestamp) return new Date(0);
+        
+        // Try to parse the timestamp
+        const date = new Date(timestamp);
+        
+        // If invalid date, try to parse different formats
+        if (isNaN(date.getTime())) {
+          // Try replacing space with T for ISO format
+          const isoString = timestamp.replace(' ', 'T');
+          const isoDate = new Date(isoString);
+          
+          if (!isNaN(isoDate.getTime())) {
+            return isoDate;
+          }
+          
+          // Return current date as fallback
+          return new Date();
+        }
+        
+        return date;
+      },
+
+      // Format time as HH:MM:SS
+      formatTime(timestamp) {
+        const date = this.parseTimestamp(timestamp);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      },
+
+      // Get time ago string
+      getTimeAgo(timestamp) {
+        const date = this.parseTimestamp(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSec = Math.floor(diffMs / 1000);
+        
+        if (diffSec < 60) {
+          return `${diffSec}s ago`;
+        } else if (diffSec < 3600) {
+          return `${Math.floor(diffSec / 60)}m ago`;
+        } else {
+          return `${Math.floor(diffSec / 3600)}h ago`;
+        }
+      },
+
+      // Determine call type from event data
+      getCallType(event) {
+        const eventType = String(event.event_type || event.event || '').toLowerCase();
+        
+        if (eventType.includes('call')) {
+          return 'call';
+        } else if (eventType.includes('assist')) {
+          return 'assist';
+        } else if (eventType.includes('wandering')) {
+          return 'wandering';
+        } else if (eventType.includes('emergency') || eventType.includes('alarm')) {
+          return 'emergency';
+        } else {
+          return 'default';
+        }
+      },
+
+      // Get location from event data
+      getLocation(event) {
+        // Try different possible location fields
+        return event.location || 
+               event.room_name || 
+               event.roomName || 
+               event.bed_name || 
+               event.bedName || 
+               event.ward_name || 
+               event.wardName || 
+               'Unknown Location';
+      },
+
+      // Get subtitle from event data
+      getSubtitle(event) {
+        return event.description || 
+               event.event_type || 
+               event.event || 
+               'Call point';
+      },
+
+      // Render calls to the grid
+      renderCalls() {
         const grid = document.getElementById('active-grid');
-        const activeCount = Object.keys(this.data.activeByBed || {}).length;
-
-        grid.classList.toggle('one',  activeCount === 1);
-        grid.classList.toggle('two',  activeCount === 2);
-        grid.classList.toggle('many', activeCount >= 3);
-
-        const pill = document.getElementById('active-count-pill');
-        if (pill) pill.textContent = String(activeCount);
-
-        if (activeCount === 0){
-          grid.innerHTML = `<div class="empty">No active calls</div>`;
+        const calls = this.data.activeCalls;
+        
+        if (calls.length === 0) {
+          grid.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">📞</div>
+              <div class="empty-title">No Active Calls</div>
+              <div class="empty-subtitle">When calls come in, they will appear here in real-time</div>
+            </div>
+          `;
           return;
         }
-
-        let list = Object.values(this.data.activeByBed);
-        list.sort((a,b) => {
-          const at = this.parseTs(a.system_timestamp)?.getTime() || 0;
-          const bt = this.parseTs(b.system_timestamp)?.getTime() || 0;
-          return bt - at;
-        });
-
-        grid.innerHTML = list.map(ev => this.cardHtml(ev)).join('');
+        
+        // Generate HTML for each call
+        const callsHTML = calls.map((call, index) => {
+          const callType = this.getCallType(call);
+          const location = this.getLocation(call);
+          const subtitle = this.getSubtitle(call);
+          const time = this.formatTime(call.system_timestamp || call.timestamp || call.created_at);
+          const timeAgo = this.getTimeAgo(call.system_timestamp || call.timestamp || call.created_at);
+          
+          return `
+            <div class="call-card call-type-${callType}">
+              <div class="status-indicator"></div>
+              <div class="call-header">
+                <div class="call-type call-type-${callType}">${callType.toUpperCase()}</div>
+                <div class="call-time">${time}</div>
+              </div>
+              <div class="call-details">
+                <div class="call-location">${this.escapeHtml(location)}</div>
+                <div class="call-subtitle">${this.escapeHtml(subtitle)}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        grid.innerHTML = callsHTML;
       },
 
-      cardHtml(call){
-        const eventType = call.event_type || call.eventType || call.event || 'Unknown';
-        const ring = this.getEventColor(eventType);
+      // Update statistics
+      updateStats() {
+        const totalCalls = document.getElementById('total-calls');
+        const activeNow = document.getElementById('active-now');
+        const activeCount = document.getElementById('active-count');
+        const activeCountBadge = document.getElementById('active-count-badge');
+        
+        const count = this.data.activeCalls.length;
+        
+        totalCalls.textContent = count;
+        activeNow.textContent = count;
+        activeCount.textContent = count;
+        
+        // Update badge visibility
+        if (count === 0) {
+          activeCountBadge.style.display = 'none';
+        } else {
+          activeCountBadge.style.display = 'flex';
+        }
+      },
 
-        const floor = call.floor_name || call.floorName || '—';
-        const ward  = call.ward_name  || call.wardName  || '—';
+      // Update last updated time
+      updateLastUpdated() {
+        const lastUpdated = document.getElementById('last-updated');
+        const now = new Date();
+        
+        // Format as HH:MM
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        
+        lastUpdated.textContent = `${hours}:${minutes}`;
+      },
 
-        const title = call.bed_name || call.bedName || ('Bed ' + (call.bed_number || call.bedNumber || 'N/A'));
-        const subtitle = call.room_name || call.roomName || '—';
-
-        const ts = call.system_timestamp || call.systemTimestamp || '';
-        const timeAgo = this.getTimeAgo(ts);
-
-        return ` 
-          <div class="card ringing" style="--ring:${this.escapeAttr(ring)};">
-            <div class="cardInner">
-              <div class="cardHead">
-                <div class="headLeft">
-                  <div class="callIcon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                      <path d="M6.6 10.8c1.7 3.3 3.9 5.5 7.2 7.2l2.4-2.4c.3-.3.8-.4 1.2-.3 1.3.4 2.7.7 4.1.7.7 0 1.2.5 1.2 1.2V21c0 .7-.5 1.2-1.2 1.2C10.7 22.2 1.8 13.3 1.8 2.7 1.8 2 2.3 1.5 3 1.5h3.9c.7 0 1.2.5 1.2 1.2 0 1.4.2 2.8.7 4.1.1.4 0 .9-.3 1.2L6.6 10.8z" fill="currentColor"/>
-                    </svg>
-                  </div>
-                  <div class="hTitle">
-                    <p class="t1">${this.escapeHtml(title)}</p>
-                    <p class="t2">${this.escapeHtml(subtitle)}</p>
-                  </div>
-                </div>
-
-                <div class="badge" title="Event type">
-                  <span class="miniDot"></span>
-                  ${this.escapeHtml(eventType).toUpperCase()}
-                </div>
-              </div>
-
-              <div class="meta">
-                <div class="metaItem">
-                  <div class="k">Floor</div>
-                  <div class="v">${this.escapeHtml(floor)}</div>
-                </div>
-                <div class="metaItem">
-                  <div class="k">Ward</div>
-                  <div class="v">${this.escapeHtml(ward)}</div>
-                </div>
-                <div class="metaItem">
-                  <div class="k">Time</div>
-                  <div class="v">${this.escapeHtml(timeAgo)}</div>
-                </div>
-                <div class="metaItem">
-                  <div class="k">Status</div>
-                  <div class="v">Active</div>
-                </div>
-              </div>
-
-            </div>
+      // Show error state
+      showErrorState() {
+        const grid = document.getElementById('active-grid');
+        grid.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">⚠️</div>
+            <div class="empty-title">Connection Error</div>
+            <div class="empty-subtitle">Unable to load active calls. Please check your connection.</div>
           </div>
         `;
       },
 
-      // Keep other methods as they are (without camera functionality)
+      // Escape HTML to prevent XSS
+      escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      },
+
+      // Toggle auto-refresh
+      toggleAutoRefresh() {
+        this.data.autoRefresh = !this.data.autoRefresh;
+        const status = document.getElementById('refresh-status');
+        status.textContent = this.data.autoRefresh ? 'ON' : 'OFF';
+      }
     };
 
-    window.addEventListener('load', () => app.init());
+    // Initialize the app when the page loads
+    window.addEventListener('load', () => {
+      app.init();
+      
+      // Add click handler for auto-refresh indicator
+      document.querySelector('.auto-refresh').addEventListener('click', () => {
+        app.toggleAutoRefresh();
+      });
+    });
+
+    // Handle beforeunload to close WebSocket properly
+    window.addEventListener('beforeunload', () => {
+      if (app.data.ws && app.data.ws.readyState === WebSocket.OPEN) {
+        app.data.ws.close();
+      }
+    });
   </script>
 </body>
 </html>
