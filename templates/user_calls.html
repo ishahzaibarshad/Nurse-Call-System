@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Calls - Nurse Call System</title>
+
+  <link href="/static/css/output.css" rel="stylesheet" />
+
+  <style>
+    /* Retain the styles from your original calls.html page */
+    body {
+      background: linear-gradient(180deg, var(--bg1), var(--bg2));
+      min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color: var(--text);
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+      width: 100%;
+      flex-direction: column;
+    }
+
+    /* Hide the sidebar for user_calls.html */
+    .sidebar {
+      display: none;
+    }
+
+    /* Main content area */
+    .main {
+      flex: 1;
+      padding: 18px;
+    }
+
+    .container {
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+
+    /* Top controls (optional, you can hide if not needed) */
+    .topbar {
+      background: rgba(255, 255, 255, .92);
+      border: 1px solid rgba(229, 231, 235, 1);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    /* Grid of active calls */
+    .gridWrap {
+      margin-top: 16px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+      align-items: stretch;
+      grid-template-columns: repeat(auto-fit, minmax(620px, 1fr));
+    }
+
+    .empty {
+      padding: 26px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 1000;
+      background: rgba(255, 255, 255, .88);
+      border: 1px dashed rgba(229, 231, 235, 1);
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+    }
+
+    /* Cards (calls) */
+    .card {
+      position: relative;
+      border-radius: 34px;
+      overflow: visible;
+      min-height: 780px;
+    }
+
+    .cardInner {
+      background: rgba(255, 255, 255, .92);
+      border: 1px solid rgba(229, 231, 235, 1);
+      border-radius: 34px;
+      box-shadow: var(--shadow2);
+      display: flex;
+      flex-direction: column;
+      min-height: 780px;
+    }
+
+    .cardHead {
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(229, 231, 235, 1);
+      background: rgba(248, 250, 252, .95);
+    }
+
+    .headLeft {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .callIcon {
+      width: 46px;
+      height: 46px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: rgba(37, 99, 235, .10);
+      border: 1px solid rgba(229, 231, 235, 1);
+      color: rgba(37, 99, 235, 1);
+    }
+
+    .hTitle {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .hTitle .t1 {
+      margin: 0;
+      font-weight: 1100;
+      font-size: clamp(18px, 1.1vw + 14px, 24px);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hTitle .t2 {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(11px, .5vw + 9px, 13px);
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .meta {
+      margin: 12px 16px 16px;
+      border-radius: 26px;
+      border: 1px solid rgba(229, 231, 235, 1);
+      background: rgba(248, 250, 252, .96);
+      padding: 14px 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 18px;
+    }
+
+    .metaItem .k {
+      font-size: 11px;
+      font-weight: 1000;
+      color: rgba(100, 116, 139, .95);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .metaItem .v {
+      font-size: 16px;
+      font-weight: 1000;
+      color: var(--text);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="container">
+        <div class="topbar">
+          <div class="leftPills">
+            <div class="pill">
+              <span id="active-count-pill">0</span>
+              <span>Active</span>
+            </div>
+            <div class="pill" title="WebSocket status">
+              <span id="ws-status" class="dot"></span>
+              <span id="ws-text">Connecting</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ONLY ACTIVE CALLS -->
+        <div class="gridWrap">
+          <div id="active-grid" class="grid">
+            <div class="empty">Loading active calls...</div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function setActiveNav(){
+      const path = location.pathname === "/" ? "dashboard" : location.pathname.split("/")[1];
+      document.querySelectorAll("[data-nav]").forEach(a => {
+        a.classList.toggle("is-active", a.getAttribute("data-nav") === path);
+      });
+    })();
+
+    const app = {
+      data: {
+        beds: [],
+        bedMap: {},
+        ws: null,
+        autoRefresh: true,
+        customColors: {},
+        activeByBed: {},
+      },
+
+      _activeFetchInFlight: false,
+      _wsDebounceTimer: null,
+
+      // Keep the existing app methods as they are
+
+      async init(){
+        await this.loadCustomColors();
+        await this.loadBeds();
+        await this.loadActiveCalls();
+
+        this.setupWebSocket();
+
+        setInterval(() => {
+          if (this.data.autoRefresh) this.loadActiveCalls();
+        }, 5000);
+
+        document.addEventListener('fullscreenchange', () => {
+          const on = !!document.fullscreenElement;
+          document.body.classList.toggle('fsMode', on);
+          document.getElementById('fullscreen-text').textContent = on ? 'Exit Fullscreen' : 'Fullscreen';
+        });
+      },
+
+      async loadActiveCalls() {
+        if (this._activeFetchInFlight) return;
+        this._activeFetchInFlight = true;
+
+        try {
+          const response = await fetch('/api/events/recent?limit=200');
+          const raw = await response.json();
+          const events = this.asArray(raw);
+
+          const normalized = events.map(ev => this.normEvent(ev));
+
+          const active = normalized.filter(e =>
+            (String(e.status || '').toLowerCase() === 'active') &&
+            e.bed_id != null
+          );
+
+          const map = {};
+          active.forEach(ev => {
+            const bid = String(ev.bed_id);
+            const existing = map[bid];
+
+            const evTs = this.parseTs(ev.system_timestamp);
+            const exTs = existing ? this.parseTs(existing.system_timestamp) : null;
+
+            if (!existing || (evTs && exTs && evTs > exTs) || (evTs && !exTs)) {
+              map[bid] = ev;
+            }
+          });
+
+          this.data.activeByBed = map;
+          this.renderActiveOnly();
+        } catch (e) {
+          console.error("[calls] loadActiveCalls error:", e);
+        } finally {
+          this._activeFetchInFlight = false;
+        }
+      },
+
+      renderActiveOnly(){
+        const grid = document.getElementById('active-grid');
+        const activeCount = Object.keys(this.data.activeByBed || {}).length;
+
+        grid.classList.toggle('one',  activeCount === 1);
+        grid.classList.toggle('two',  activeCount === 2);
+        grid.classList.toggle('many', activeCount >= 3);
+
+        const pill = document.getElementById('active-count-pill');
+        if (pill) pill.textContent = String(activeCount);
+
+        if (activeCount === 0){
+          grid.innerHTML = `<div class="empty">No active calls</div>`;
+          return;
+        }
+
+        let list = Object.values(this.data.activeByBed);
+        list.sort((a,b) => {
+          const at = this.parseTs(a.system_timestamp)?.getTime() || 0;
+          const bt = this.parseTs(b.system_timestamp)?.getTime() || 0;
+          return bt - at;
+        });
+
+        grid.innerHTML = list.map(ev => this.cardHtml(ev)).join('');
+      },
+
+      cardHtml(call){
+        const eventType = call.event_type || call.eventType || call.event || 'Unknown';
+        const ring = this.getEventColor(eventType);
+
+        const floor = call.floor_name || call.floorName || '—';
+        const ward  = call.ward_name  || call.wardName  || '—';
+
+        const title = call.bed_name || call.bedName || ('Bed ' + (call.bed_number || call.bedNumber || 'N/A'));
+        const subtitle = call.room_name || call.roomName || '—';
+
+        const ts = call.system_timestamp || call.systemTimestamp || '';
+        const timeAgo = this.getTimeAgo(ts);
+
+        return ` 
+          <div class="card ringing" style="--ring:${this.escapeAttr(ring)};">
+            <div class="cardInner">
+              <div class="cardHead">
+                <div class="headLeft">
+                  <div class="callIcon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <path d="M6.6 10.8c1.7 3.3 3.9 5.5 7.2 7.2l2.4-2.4c.3-.3.8-.4 1.2-.3 1.3.4 2.7.7 4.1.7.7 0 1.2.5 1.2 1.2V21c0 .7-.5 1.2-1.2 1.2C10.7 22.2 1.8 13.3 1.8 2.7 1.8 2 2.3 1.5 3 1.5h3.9c.7 0 1.2.5 1.2 1.2 0 1.4.2 2.8.7 4.1.1.4 0 .9-.3 1.2L6.6 10.8z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <div class="hTitle">
+                    <p class="t1">${this.escapeHtml(title)}</p>
+                    <p class="t2">${this.escapeHtml(subtitle)}</p>
+                  </div>
+                </div>
+
+                <div class="badge" title="Event type">
+                  <span class="miniDot"></span>
+                  ${this.escapeHtml(eventType).toUpperCase()}
+                </div>
+              </div>
+
+              <div class="meta">
+                <div class="metaItem">
+                  <div class="k">Floor</div>
+                  <div class="v">${this.escapeHtml(floor)}</div>
+                </div>
+                <div class="metaItem">
+                  <div class="k">Ward</div>
+                  <div class="v">${this.escapeHtml(ward)}</div>
+                </div>
+                <div class="metaItem">
+                  <div class="k">Time</div>
+                  <div class="v">${this.escapeHtml(timeAgo)}</div>
+                </div>
+                <div class="metaItem">
+                  <div class="k">Status</div>
+                  <div class="v">Active</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        `;
+      },
+
+      // Keep other methods as they are (without camera functionality)
+    };
+
+    window.addEventListener('load', () => app.init());
+  </script>
+</body>
+</html>

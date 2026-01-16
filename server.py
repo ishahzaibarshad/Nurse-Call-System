@@ -1,4 +1,4 @@
-# server.py
+import os
 import socket
 import asyncio
 import json
@@ -9,17 +9,30 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from urllib.parse import quote
 from typing import Optional, Any, Dict
+from fastapi import HTTPException, status
 
 import uvicorn
 import pymysql
-
+from sqlalchemy import inspect, func  # <-- Ensure func is imported here
+from sqlalchemy.orm import joinedload
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from werkzeug.security import generate_password_hash, check_password_hash
+from fastapi import Form
+from starlette.middleware.sessions import SessionMiddleware
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String
+from fastapi import Depends
+from passlib.context import CryptContext
 
-from pydantic import BaseModel, ConfigDict, Field, AliasChoices
-from sqlalchemy import inspect, func, text
+
+
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import joinedload
 
 from decoder import decode_l7700_packet
@@ -31,6 +44,7 @@ from models import (
     get_karachi_time
 )
 
+
 # ----------------- Globals -----------------
 
 engine = get_db_engine(
@@ -41,6 +55,60 @@ engine = get_db_engine(
 # NOTE: camera streams are keyed by BED NAME (primary), but we also support room-name fallback.
 camera_manager = CameraManager(use_simulation=False)
 active_connections: Dict[int, WebSocket] = {}
+
+
+app = FastAPI()
+
+# Secret key for session handling (change it for production)
+# app.secret_key = os.urandom(24)
+
+# Set up Jinja2 templates directory
+templates = Jinja2Templates(directory="templates")
+
+
+# Secret key for session handling (change it for production)
+app.secret_key = "your-secret-key"
+
+# Add middleware for session handling
+app.add_middleware(SessionMiddleware, secret_key=app.secret_key)
+
+# Initialize the password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# SQLAlchemy setup
+SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root@localhost/hospital_monitor"
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+# Define the User model (this will store hashed passwords)
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    password_hash = Column(String)  # Store hashed passwords
+    role = Column(String)
+
+# Create tables in the database (this step is only needed once)
+Base.metadata.create_all(bind=engine)
+
+# Dependency to get the database session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Utility to get the current session data from cookies
+def get_current_session(request: Request):
+    return request.session.get("username")
+
+# Password hash verification function
+def check_password_hash(stored_password, provided_password):
+    return pwd_context.verify(provided_password, stored_password)
 
 
 # ----------------- Helpers -----------------
@@ -379,10 +447,66 @@ templates = Jinja2Templates(directory="templates")
 
 # ----------------- Pages (FIXED: Jinja rendering + dashboard route) -----------------
 
+# Root route - default landing page
 @app.get("/", include_in_schema=False)
 def root():
-    # default landing page
-    return RedirectResponse(url="/dashboard")
+    return RedirectResponse(url="/login")
+
+# Login route (GET)
+@app.get("/login")
+async def get_login(request: Request):
+    return {"message": "Login form (Frontend)"}
+
+# Login route (POST)
+@app.post("/login")
+async def login(request: Request, username: str = Form(...), password: str = Form(...), db: SessionLocal = Depends(get_db)):
+    # Fetch user from the database
+    user = db.query(User).filter(User.username == username).first()
+    
+    # Check if the user exists and the password is correct
+    if user and check_password_hash(user.password_hash, password):
+        # On successful authentication, store username and role in the session
+        request.session["username"] = user.username
+        request.session["role"] = user.role
+        
+        # Redirect user based on their role
+        return RedirectResponse(url=f"/{user.role}/dashboard", status_code=303)
+    else:
+        # If authentication fails, raise an error
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+# Dashboard routes for each role (Admin, User, Staff)
+@app.get("/admin/dashboard")
+async def admin_dashboard(request: Request):
+    if get_current_session(request) and request.session.get("role") == "admin":
+        return {"message": "Admin Dashboard"}
+    return RedirectResponse(url="/login")
+
+@app.get("/user/dashboard")
+async def user_dashboard(request: Request):
+    if get_current_session(request) and request.session.get("role") == "user":
+        return {"message": "User Dashboard"}
+    return RedirectResponse(url="/login")
+
+@app.get("/staff/dashboard")
+async def staff_dashboard(request: Request):
+    if get_current_session(request) and request.session.get("role") == "staff":
+        return {"message": "Staff Dashboard"}
+    return RedirectResponse(url="/login")
+
+# Logout route to clear the session
+@app.get("/logout")
+def logout(request: Request):
+    request.session.clear()  # Clear session data
+    return RedirectResponse(url="/login")
+
+# Logout route
+@app.get("/logout")
+def logout():
+    response = RedirectResponse(url="/login")
+    response.delete_cookie("session")
+    return response
+
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard_page(request: Request):
@@ -694,44 +818,49 @@ async def get_colors():
 
 # ----------------- ✅ Config CRUD (aliases friendly) -----------------
 
+# Updated FloorUpsert class (already corrected)
 class FloorUpsert(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    name: Optional[str] = Field(default=None, validation_alias=AliasChoices("name"))
-    floor_number: Optional[int] = Field(default=None, validation_alias=AliasChoices("floor_number", "floorNumber", "no", "floorNo"))
+    name: Optional[str] = Field(default=None, alias="name")
+    floor_number: Optional[int] = Field(default=None, alias="floor_number")
     description: Optional[str] = None
     status: Optional[str] = None
 
+# Updated WardUpsert class (fixed the alias usage)
 class WardUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    name: Optional[str] = Field(default=None, validation_alias=AliasChoices("name"))
-    floor_id: Optional[int] = Field(default=None, validation_alias=AliasChoices("floor_id", "floorId"))
-    ward_type: Optional[str] = Field(default=None, validation_alias=AliasChoices("ward_type", "wardType", "type"))
+    name: Optional[str] = Field(default=None, alias="name")
+    floor_id: Optional[int] = Field(default=None, alias="floor_id")
+    ward_type: Optional[str] = Field(default=None, alias="ward_type")
     description: Optional[str] = None
     status: Optional[str] = None
 
+# Updated RoomUpsert class (fixed the alias usage)
 class RoomUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    ward_id: Optional[int] = Field(default=None, validation_alias=AliasChoices("ward_id", "wardId"))
-    room_name: Optional[str] = Field(default=None, validation_alias=AliasChoices("room_name", "roomName", "name"))
-    room_number: Optional[str] = Field(default=None, validation_alias=AliasChoices("room_number", "roomNumber", "number"))
-    system_ip: Optional[str] = Field(default=None, validation_alias=AliasChoices("system_ip", "systemIp", "ip"))
+    ward_id: Optional[int] = Field(default=None, alias="ward_id")
+    room_name: Optional[str] = Field(default=None, alias="room_name")
+    room_number: Optional[str] = Field(default=None, alias="room_number")
+    system_ip: Optional[str] = Field(default=None, alias="system_ip")
     status: Optional[str] = None
 
+# Updated BedUpsert class (fixed the alias usage)
 class BedUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    room_id: Optional[int] = Field(default=None, validation_alias=AliasChoices("room_id", "roomId"))
-    room: Optional[Any] = Field(default=None, validation_alias=AliasChoices("room", "roomName", "room_name", "roomNumber", "room_number"))
-    bed_name: Optional[str] = Field(default=None, validation_alias=AliasChoices("bed_name", "bedName"))
-    bed_number: Optional[str] = Field(default=None, validation_alias=AliasChoices("bed_number", "bedNumber", "bedNo", "bed"))
-    camera_id: Optional[int] = Field(default=None, validation_alias=AliasChoices("camera_id", "cameraId"))
-    status: Optional[str] = Field(default=None, validation_alias=AliasChoices("status"))
-    ip_address: Optional[str] = Field(default=None, validation_alias=AliasChoices("ip_address", "ipAddress", "ip", "intercom_ip", "intercomIp"))
+    room_id: Optional[int] = Field(default=None, alias="room_id")
+    room: Optional[Any] = Field(default=None, alias="room")
+    bed_name: Optional[str] = Field(default=None, alias="bed_name")
+    bed_number: Optional[str] = Field(default=None, alias="bed_number")
+    camera_id: Optional[int] = Field(default=None, alias="camera_id")
+    status: Optional[str] = Field(default=None, alias="status")
+    ip_address: Optional[str] = Field(default=None, alias="ip_address")
 
+# Updated ColorUpsert class (fixed the alias usage)
 class ColorUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    event_type: Optional[str] = Field(default=None, validation_alias=AliasChoices("event_type", "eventType", "type"))
-    color: Optional[str] = Field(default=None, validation_alias=AliasChoices("color"))
+    event_type: Optional[str] = Field(default=None, alias="event_type")
+    color: Optional[str] = Field(default=None, alias="color")
 
+# Example utility functions for resolving room_id and IP.
 def _resolve_room_id_for_bed(session, payload: BedUpsert) -> Optional[int]:
     if payload.room_id:
         return int(payload.room_id)
