@@ -40,14 +40,58 @@ class Floor(Base):
     status = Column(String(20), default="active")
     created_at = Column(DateTime, default=get_karachi_time)
 
+    # Floor -> Departments (NEW)
+    departments = relationship("Department", back_populates="floor", cascade="all, delete-orphan")
+
+    # Floor -> Wards (legacy support)
     wards = relationship("Ward", back_populates="floor", cascade="all, delete-orphan")
+
+
+class Department(Base):
+    __tablename__ = "departments"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Department belongs to a Floor
+    floor_id = Column(Integer, ForeignKey("floors.id", ondelete="CASCADE"), nullable=False)
+
+    name = Column(String(100), nullable=False)
+    description = Column(Text)
+    status = Column(String(20), default="active")
+    created_at = Column(DateTime, default=get_karachi_time)
+
+    floor = relationship("Floor", back_populates="departments")
+    wings = relationship("Wing", back_populates="department", cascade="all, delete-orphan")
+
+
+class Wing(Base):
+    __tablename__ = "wings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Wing belongs to a Department
+    department_id = Column(Integer, ForeignKey("departments.id", ondelete="CASCADE"), nullable=False)
+
+    name = Column(String(100), nullable=False)
+    description = Column(Text)
+    status = Column(String(20), default="active")
+    created_at = Column(DateTime, default=get_karachi_time)
+
+    department = relationship("Department", back_populates="wings")
+    wards = relationship("Ward", back_populates="wing", cascade="all, delete-orphan")
 
 
 class Ward(Base):
     __tablename__ = "wards"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    floor_id = Column(Integer, ForeignKey("floors.id", ondelete="CASCADE"), nullable=False)
+
+    # ✅ FLOOR kept for backward compatibility (NOW NULLABLE)
+    floor_id = Column(Integer, ForeignKey("floors.id", ondelete="CASCADE"), nullable=True)
+
+    # ✅ NEW: Ward belongs to Wing (preferred)
+    wing_id = Column(Integer, ForeignKey("wings.id", ondelete="SET NULL"), nullable=True)
+
     name = Column(String(100), nullable=False)
     ward_type = Column(String(50))
     description = Column(Text)
@@ -55,6 +99,8 @@ class Ward(Base):
     created_at = Column(DateTime, default=get_karachi_time)
 
     floor = relationship("Floor", back_populates="wards")
+    wing = relationship("Wing", back_populates="wards")
+
     rooms = relationship("Room", back_populates="ward", cascade="all, delete-orphan")
 
 
@@ -100,7 +146,7 @@ class Camera(Base):
     created_at = Column(DateTime, default=get_karachi_time)
 
     room = relationship("Room", back_populates="cameras")
-    # NOTE: Bed holds camera_id, so no back_populates here unless you add Camera.beds relationship.
+    # NOTE: Bed holds camera_id, so no back_populates unless you add Camera.beds relationship.
 
 
 class Bed(Base):
@@ -109,7 +155,7 @@ class Bed(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     room_id = Column(Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
 
-    # ✅ keep ONLY once (your old file had duplicates earlier)
+    # ✅ intercom ip stored on bed
     intercom_ip = Column(String(50), nullable=True)
 
     bed_number = Column(String(50), nullable=False)
@@ -221,4 +267,3 @@ def get_db_session(engine):
 
 def init_database(engine):
     Base.metadata.create_all(engine)
-

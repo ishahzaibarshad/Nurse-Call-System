@@ -1,3 +1,4 @@
+
 import os
 import socket
 import asyncio
@@ -15,7 +16,7 @@ import pymysql
 from sqlalchemy import inspect, func, text
 from sqlalchemy.orm import joinedload
 from fastapi import (
-    FastAPI, WebSocket, WebSocketDisconnect, Request, 
+    FastAPI, WebSocket, WebSocketDisconnect, Request,
     HTTPException, status, Form, Depends
 )
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, RedirectResponse
@@ -36,49 +37,40 @@ from camera_stream import CameraManager
 from config import Config
 from models import (
     get_db_engine, get_db_session, init_database,
-    Floor, Ward, Room, Bed, Camera, Event as EventModel, ColorScheme, CallSession,
+    Floor, Department, Wing, Ward, Room, Bed, Camera, Event as EventModel, ColorScheme, CallSession,
     get_karachi_time
 )
 
 
 # ----------------- Globals -----------------
 
-# Secret key for session handling
 SECRET_KEY = "your-secret-key-change-this-in-production"
 
-# Main database engine for hospital system
 engine = get_db_engine(
     Config.DATABASE_URL,
     Config.DB_SOCKET if Config.DB_USE_SOCKET else None
 )
 
-# User database engine for authentication
 SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root@localhost/hospital_monitor"
 user_engine = create_engine(SQLALCHEMY_DATABASE_URL)
 UserSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=user_engine)
 
-# User model definition
 Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     password_hash = Column(String)
     role = Column(String)
 
-# Create user table if it doesn't exist
 Base.metadata.create_all(bind=user_engine)
 
-# Camera manager and active connections
 camera_manager = CameraManager(use_simulation=False)
 active_connections: Dict[int, WebSocket] = {}
 
-# Set up Jinja2 templates directory
 templates = Jinja2Templates(directory="templates")
-
-# Initialize the password hashing context (bcrypt)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ----------------- Helpers -----------------
@@ -99,18 +91,12 @@ def _set_if_attr(obj, key: str, value: Any):
         setattr(obj, key, value)
 
 def now_karachi_naive() -> datetime:
-    """
-    Use Karachi time but store/compare as naive datetime for MySQL DATETIME compatibility.
-    """
     try:
         return get_karachi_time().replace(tzinfo=None)
     except Exception:
         return datetime.now()
 
 def ensure_column_safe(table: str, col: str, ddl: str):
-    """
-    Safe ALTER: runs only after tables exist.
-    """
     try:
         inspector = inspect(engine)
         cols = [c["name"] for c in inspector.get_columns(table)]
@@ -120,6 +106,20 @@ def ensure_column_safe(table: str, col: str, ddl: str):
             print(f"[DB] Added column {table}.{col}")
     except Exception as e:
         print(f"[DB] ensure_column_safe warning: {e}")
+
+def ensure_table_safe(create_sql: str, table_name: str):
+    """
+    Create table if not exists, safe for repeated runs.
+    """
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        if table_name not in tables:
+            with engine.begin() as conn:
+                conn.execute(text(create_sql))
+            print(f"[DB] Created table '{table_name}'")
+    except Exception as e:
+        print(f"[DB] ensure_table_safe warning for '{table_name}': {e}")
 
 def init_database_tables():
     try:
@@ -153,7 +153,50 @@ def init_database_tables():
         init_database(engine)
         print("[DB] Database and tables initialized successfully")
 
+        # Existing
         ensure_column_safe("beds", "intercom_ip", "`intercom_ip` VARCHAR(50) NULL")
+
+        # ✅ NEW: Departments & Wings tables (no ORM changes needed)
+        ensure_table_safe(
+            """
+            CREATE TABLE IF NOT EXISTS `departments` (
+              `id` INT NOT NULL AUTO_INCREMENT,
+              `name` VARCHAR(120) NOT NULL,
+              `floor_id` INT NOT NULL,
+              `description` VARCHAR(255) NULL,
+              `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+              `created_at` DATETIME NULL,
+              `updated_at` DATETIME NULL,
+              PRIMARY KEY (`id`),
+              INDEX `idx_departments_floor` (`floor_id`),
+              INDEX `idx_departments_status` (`status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """,
+            "departments"
+        )
+
+        ensure_table_safe(
+            """
+            CREATE TABLE IF NOT EXISTS `wings` (
+              `id` INT NOT NULL AUTO_INCREMENT,
+              `name` VARCHAR(120) NOT NULL,
+              `department_id` INT NOT NULL,
+              `description` VARCHAR(255) NULL,
+              `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+              `created_at` DATETIME NULL,
+              `updated_at` DATETIME NULL,
+              PRIMARY KEY (`id`),
+              INDEX `idx_wings_department` (`department_id`),
+              INDEX `idx_wings_status` (`status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """,
+            "wings"
+        )
+
+        # ✅ Optional (for future hierarchy): add nullable department_id and wing_id to wards table.
+        # This does NOT break your existing system if not used.
+        ensure_column_safe("wards", "department_id", "`department_id` INT NULL")
+        ensure_column_safe("wards", "wing_id", "`wing_id` INT NULL")
 
         inspector = inspect(engine)
         tables = inspector.get_table_names()
@@ -245,7 +288,6 @@ def get_or_create_call_session(session, bed_id, event_type):
 # ----------------- Authentication Helpers -----------------
 
 def get_user_db():
-    """Dependency to get user database session"""
     db = UserSessionLocal()
     try:
         yield db
@@ -253,7 +295,6 @@ def get_user_db():
         db.close()
 
 def get_current_user(request: Request):
-    """Get current user from session"""
     username = request.session.get("username")
     role = request.session.get("role")
     if not username or not role:
@@ -261,7 +302,6 @@ def get_current_user(request: Request):
     return {"username": username, "role": role}
 
 def check_password_hash(stored_password, provided_password):
-    """Compare the stored password hash with the provided password"""
     try:
         return pwd_context.verify(provided_password, stored_password)
     except Exception as e:
@@ -269,7 +309,6 @@ def check_password_hash(stored_password, provided_password):
         return False
 
 def rehash_passwords():
-    """Rehash passwords for existing users if needed"""
     db = UserSessionLocal()
     try:
         users = db.query(User).all()
@@ -372,7 +411,6 @@ def mjpeg_generator(stream_key: str, fps: int = 10):
             payload + b"\r\n"
         )
 
-# Fixed base64 string for placeholder JPEG (1x1 black pixel)
 _PLACEHOLDER_JPEG = base64.b64decode(
     "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a"
     "HBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIy"
@@ -419,7 +457,6 @@ async def lifespan(app: FastAPI):
 # ----------------- Create FastAPI app with lifespan -----------------
 app = FastAPI(lifespan=lifespan)
 
-# Add SessionMiddleware
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
@@ -427,7 +464,6 @@ app.add_middleware(
     max_age=86400,
 )
 
-# Mount static files and set up templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -443,18 +479,17 @@ async def get_login(request: Request):
 
 @app.post("/login")
 async def login(
-    request: Request, 
-    username: str = Form(...), 
+    request: Request,
+    username: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_user_db)
 ):
     user = db.query(User).filter(User.username == username).first()
-    
+
     if user and check_password_hash(user.password_hash, password):
         request.session["username"] = user.username
         request.session["role"] = user.role
-        
-        # Redirect based on role to the correct page
+
         if user.role == "admin":
             return RedirectResponse(url="/dashboard", status_code=303)
         elif user.role == "staff":
@@ -462,142 +497,98 @@ async def login(
         elif user.role == "user":
             return RedirectResponse(url="/user_calls", status_code=303)
         else:
-            # Default fallback
             return RedirectResponse(url="/login", status_code=303)
     else:
         return templates.TemplateResponse(
-            "login.html", 
+            "login.html",
             {"request": request, "error": "Invalid credentials"}
         )
 
 # ----------------- Role-Specific Page Routes -----------------
 
-# 1. ADMIN ROUTES - Admin can access ALL pages with sidebar
 @app.get("/dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login")
-    
-    # Only admin can access dashboard
+
     if user["role"] != "admin":
-        # Redirect non-admin users to their respective pages
         if user["role"] == "staff":
             return RedirectResponse(url="/calls")
         elif user["role"] == "user":
             return RedirectResponse(url="/user_calls")
-    
-    # Pass show_sidebar=True for admin
+
     return templates.TemplateResponse(
-        "dashboard.html", 
-        {
-            "request": request, 
-            "user": user,
-            "show_sidebar": True
-        }
+        "dashboard.html",
+        {"request": request, "user": user, "show_sidebar": True}
     )
 
-# Admin can also access calls page (but with sidebar)
 @app.get("/calls", response_class=HTMLResponse)
 async def admin_calls_page(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login")
-    
-    # Admin and staff can access calls page
+
     if user["role"] not in ["admin", "staff"]:
         if user["role"] == "user":
             return RedirectResponse(url="/user_calls")
-    
-    # Pass show_sidebar=True for admin, False for staff
+
     show_sidebar = user["role"] == "admin"
     return templates.TemplateResponse(
-        "calls.html", 
-        {
-            "request": request, 
-            "user": user,
-            "show_sidebar": show_sidebar
-        }
+        "calls.html",
+        {"request": request, "user": user, "show_sidebar": show_sidebar}
     )
 
-# Admin can also access user_calls page (but with sidebar)
 @app.get("/user_calls", response_class=HTMLResponse)
 async def admin_user_calls_page(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login")
-    
-    # Admin and user can access user_calls page
+
     if user["role"] not in ["admin", "user"]:
         if user["role"] == "staff":
             return RedirectResponse(url="/calls")
-    
-    # Pass show_sidebar=True for admin, False for user
+
     show_sidebar = user["role"] == "admin"
     return templates.TemplateResponse(
-        "user_calls.html", 
-        {
-            "request": request, 
-            "user": user,
-            "show_sidebar": show_sidebar
-        }
+        "user_calls.html",
+        {"request": request, "user": user, "show_sidebar": show_sidebar}
     )
 
-# Admin can access history page (with sidebar)
 @app.get("/history", response_class=HTMLResponse)
 async def history_page(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login")
-    
-    # Only admin can access history page
+
     if user["role"] != "admin":
-        # Redirect non-admin users to their respective pages
         if user["role"] == "staff":
             return RedirectResponse(url="/calls")
         elif user["role"] == "user":
             return RedirectResponse(url="/user_calls")
-    
+
     return templates.TemplateResponse(
-        "history.html", 
-        {
-            "request": request, 
-            "user": user,
-            "show_sidebar": True
-        }
+        "history.html",
+        {"request": request, "user": user, "show_sidebar": True}
     )
 
-# Admin can access config page (with sidebar)
 @app.get("/config", response_class=HTMLResponse)
 async def config_page(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login")
-    
-    # Only admin can access config page
+
     if user["role"] != "admin":
-        # Redirect non-admin users to their respective pages
         if user["role"] == "staff":
             return RedirectResponse(url="/calls")
         elif user["role"] == "user":
             return RedirectResponse(url="/user_calls")
-    
+
     return templates.TemplateResponse(
-        "config.html", 
-        {
-            "request": request, 
-            "user": user,
-            "show_sidebar": True
-        }
+        "config.html",
+        {"request": request, "user": user, "show_sidebar": True}
     )
 
-# 2. STAFF ROUTES - Staff can only access calls.html (without sidebar)
-# (The /calls route above handles both admin and staff)
-
-# 3. USER ROUTES - User can only access user_calls.html (without sidebar)
-# (The /user_calls route above handles both admin and user)
-
-# Sidebar partials
 @app.get("/sidebar.html", response_class=HTMLResponse, include_in_schema=False)
 async def sidebar_partial(request: Request):
     user = get_current_user(request)
@@ -607,7 +598,6 @@ async def sidebar_partial(request: Request):
 async def sidebar_partial_alias(request: Request):
     return await sidebar_partial(request)
 
-# Logout route
 @app.get("/logout")
 async def logout(request: Request):
     request.session.clear()
@@ -681,7 +671,7 @@ async def camera_by_key(key: str):
     finally:
         session.close()
 
-# ----------------- APIs (Accessible to all authenticated users) -----------------
+# ----------------- APIs -----------------
 
 @app.get("/api/stats")
 async def get_stats():
@@ -802,6 +792,16 @@ async def get_floors():
         out = []
         for f in floors:
             wards_count = session.query(func.count(Ward.id)).filter(Ward.floor_id == f.id).scalar() or 0
+            # ✅ NEW count
+            dept_count = 0
+            try:
+                dept_count = session.execute(
+                    text("SELECT COUNT(*) FROM departments WHERE floor_id=:fid"),
+                    {"fid": f.id}
+                ).scalar() or 0
+            except Exception:
+                dept_count = 0
+
             out.append({
                 "id": f.id,
                 "name": f.name,
@@ -809,8 +809,81 @@ async def get_floors():
                 "description": f.description,
                 "status": f.status,
                 "wards": int(wards_count),
+                "departments": int(dept_count),
             })
         return {"floors": out}
+    finally:
+        session.close()
+
+@app.get("/api/config/departments")
+async def get_departments():
+    session = get_db_session(engine)
+    try:
+        rows = session.execute(
+            text("""
+                SELECT d.id, d.name, d.floor_id, d.description, d.status
+                FROM departments d
+                ORDER BY d.id ASC
+            """)
+        ).mappings().all()
+
+        out = []
+        for r in rows:
+            wing_count = 0
+            try:
+                wing_count = session.execute(
+                    text("SELECT COUNT(*) FROM wings WHERE department_id=:did"),
+                    {"did": r["id"]}
+                ).scalar() or 0
+            except Exception:
+                wing_count = 0
+
+            out.append({
+                "id": r["id"],
+                "name": r["name"],
+                "floorId": r["floor_id"],
+                "description": r["description"],
+                "status": r["status"],
+                "wings": int(wing_count),
+            })
+
+        return {"departments": out}
+    finally:
+        session.close()
+
+@app.get("/api/config/wings")
+async def get_wings():
+    session = get_db_session(engine)
+    try:
+        rows = session.execute(
+            text("""
+                SELECT w.id, w.name, w.department_id, w.description, w.status
+                FROM wings w
+                ORDER BY w.id ASC
+            """)
+        ).mappings().all()
+
+        out = []
+        for r in rows:
+            ward_count = 0
+            try:
+                ward_count = session.execute(
+                    text("SELECT COUNT(*) FROM wards WHERE wing_id=:wid"),
+                    {"wid": r["id"]}
+                ).scalar() or 0
+            except Exception:
+                ward_count = 0
+
+            out.append({
+                "id": r["id"],
+                "name": r["name"],
+                "departmentId": r["department_id"],
+                "description": r["description"],
+                "status": r["status"],
+                "wards": int(ward_count),
+            })
+
+        return {"wings": out}
     finally:
         session.close()
 
@@ -822,10 +895,27 @@ async def get_wards():
         out = []
         for w in wards:
             rooms_count = session.query(func.count(Room.id)).filter(Room.ward_id == w.id).scalar() or 0
+
+            # ✅ Read optional columns if present (from DB), without changing ORM
+            dep_id = None
+            wing_id = None
+            try:
+                row = session.execute(
+                    text("SELECT department_id, wing_id FROM wards WHERE id=:id"),
+                    {"id": w.id}
+                ).mappings().first()
+                if row:
+                    dep_id = row.get("department_id")
+                    wing_id = row.get("wing_id")
+            except Exception:
+                pass
+
             out.append({
                 "id": w.id,
                 "name": w.name,
                 "floorId": w.floor_id,
+                "departmentId": dep_id,
+                "wingId": wing_id,
                 "wardType": w.ward_type,
                 "description": w.description,
                 "status": w.status,
@@ -890,10 +980,27 @@ class FloorUpsert(BaseModel):
     description: Optional[str] = None
     status: Optional[str] = None
 
+class DepartmentUpsert(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    name: Optional[str] = Field(default=None, alias="name")
+    floor_id: Optional[int] = Field(default=None, alias="floor_id")
+    description: Optional[str] = None
+    status: Optional[str] = None
+
+class WingUpsert(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    name: Optional[str] = Field(default=None, alias="name")
+    department_id: Optional[int] = Field(default=None, alias="department_id")
+    description: Optional[str] = None
+    status: Optional[str] = None
+
 class WardUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
     name: Optional[str] = Field(default=None, alias="name")
     floor_id: Optional[int] = Field(default=None, alias="floor_id")
+    # ✅ new optional mapping fields
+    department_id: Optional[int] = Field(default=None, alias="department_id")
+    wing_id: Optional[int] = Field(default=None, alias="wing_id")
     ward_type: Optional[str] = Field(default=None, alias="ward_type")
     description: Optional[str] = None
     status: Optional[str] = None
@@ -970,6 +1077,12 @@ def _ensure_intercom_ip_unique(session, ip: str, ignore_bed_id: Optional[int] = 
     if exists:
         return f"intercom ip '{ip}' already used by bed id={exists.id}"
     return None
+
+def _last_insert_id(session) -> int:
+    try:
+        return int(session.execute(text("SELECT LAST_INSERT_ID()")).scalar() or 0)
+    except Exception:
+        return 0
 
 # ---------- Floors CRUD ----------
 @app.post("/api/config/floors")
@@ -1051,6 +1164,288 @@ async def delete_floor(floor_id: int):
     finally:
         session.close()
 
+# ---------- Departments CRUD ----------
+@app.post("/api/config/departments")
+@app.put("/api/config/departments")
+async def create_department(payload: DepartmentUpsert):
+    session = get_db_session(engine)
+    try:
+        data = payload.model_dump(exclude_unset=True)
+        name = _s(data.get("name"))
+        floor_id = data.get("floor_id")
+
+        if not name:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "name is required"}, status_code=422)
+        if floor_id is None:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "floor_id is required"}, status_code=422)
+
+        # validate floor exists
+        f = session.query(Floor).filter(Floor.id == int(floor_id)).first()
+        if not f:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "floor_id not found"}, status_code=404)
+
+        session.execute(
+            text("""
+                INSERT INTO departments (name, floor_id, description, status, created_at)
+                VALUES (:name, :floor_id, :description, :status, :created_at)
+            """),
+            {
+                "name": name,
+                "floor_id": int(floor_id),
+                "description": data.get("description"),
+                "status": data.get("status") or "active",
+                "created_at": now_karachi_naive(),
+            }
+        )
+        session.commit()
+        new_id = _last_insert_id(session)
+
+        row = session.execute(
+            text("SELECT id, name, floor_id, description, status FROM departments WHERE id=:id"),
+            {"id": new_id}
+        ).mappings().first()
+
+        return {"ok": True, "success": True, "status": "success", "message": "Department created", "department": {
+            "id": row["id"], "name": row["name"], "floorId": row["floor_id"],
+            "description": row["description"], "status": row["status"]
+        }}
+    except Exception as e:
+        session.rollback()
+        return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
+    finally:
+        session.close()
+
+@app.put("/api/config/departments/{department_id}")
+@app.patch("/api/config/departments/{department_id}")
+async def update_department(department_id: int, payload: DepartmentUpsert):
+    session = get_db_session(engine)
+    try:
+        exists = session.execute(
+            text("SELECT id FROM departments WHERE id=:id"),
+            {"id": department_id}
+        ).scalar()
+
+        if not exists:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Department not found"}, status_code=404)
+
+        data = payload.model_dump(exclude_unset=True)
+
+        if "floor_id" in data and data.get("floor_id") is not None:
+            f = session.query(Floor).filter(Floor.id == int(data["floor_id"])).first()
+            if not f:
+                return JSONResponse({"ok": False, "success": False, "status": "error", "error": "floor_id not found"}, status_code=404)
+
+        session.execute(
+            text("""
+                UPDATE departments
+                SET
+                  name = COALESCE(:name, name),
+                  floor_id = COALESCE(:floor_id, floor_id),
+                  description = COALESCE(:description, description),
+                  status = COALESCE(:status, status),
+                  updated_at = :updated_at
+                WHERE id = :id
+            """),
+            {
+                "id": department_id,
+                "name": _s(data.get("name")) if "name" in data else None,
+                "floor_id": int(data["floor_id"]) if "floor_id" in data and data.get("floor_id") is not None else None,
+                "description": data.get("description") if "description" in data else None,
+                "status": data.get("status") if "status" in data else None,
+                "updated_at": now_karachi_naive(),
+            }
+        )
+        session.commit()
+
+        row = session.execute(
+            text("SELECT id, name, floor_id, description, status FROM departments WHERE id=:id"),
+            {"id": department_id}
+        ).mappings().first()
+
+        return {"ok": True, "success": True, "status": "success", "message": "Department saved", "department": {
+            "id": row["id"], "name": row["name"], "floorId": row["floor_id"],
+            "description": row["description"], "status": row["status"]
+        }}
+    except Exception as e:
+        session.rollback()
+        return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
+    finally:
+        session.close()
+
+@app.delete("/api/config/departments/{department_id}")
+async def delete_department(department_id: int):
+    session = get_db_session(engine)
+    try:
+        exists = session.execute(
+            text("SELECT id FROM departments WHERE id=:id"),
+            {"id": department_id}
+        ).scalar()
+        if not exists:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Department not found"}, status_code=404)
+
+        # Optional safety: prevent delete if wings exist
+        wing_cnt = session.execute(
+            text("SELECT COUNT(*) FROM wings WHERE department_id=:id"),
+            {"id": department_id}
+        ).scalar() or 0
+        if int(wing_cnt) > 0:
+            return JSONResponse(
+                {"ok": False, "success": False, "status": "error", "error": "Cannot delete department: wings exist"},
+                status_code=400
+            )
+
+        session.execute(text("DELETE FROM departments WHERE id=:id"), {"id": department_id})
+        session.commit()
+        return {"ok": True, "success": True, "status": "success", "message": "Department deleted"}
+    except Exception as e:
+        session.rollback()
+        return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
+    finally:
+        session.close()
+
+# ---------- Wings CRUD ----------
+@app.post("/api/config/wings")
+@app.put("/api/config/wings")
+async def create_wing(payload: WingUpsert):
+    session = get_db_session(engine)
+    try:
+        data = payload.model_dump(exclude_unset=True)
+        name = _s(data.get("name"))
+        department_id = data.get("department_id")
+
+        if not name:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "name is required"}, status_code=422)
+        if department_id is None:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "department_id is required"}, status_code=422)
+
+        dep_exists = session.execute(
+            text("SELECT id FROM departments WHERE id=:id"),
+            {"id": int(department_id)}
+        ).scalar()
+        if not dep_exists:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "department_id not found"}, status_code=404)
+
+        session.execute(
+            text("""
+                INSERT INTO wings (name, department_id, description, status, created_at)
+                VALUES (:name, :department_id, :description, :status, :created_at)
+            """),
+            {
+                "name": name,
+                "department_id": int(department_id),
+                "description": data.get("description"),
+                "status": data.get("status") or "active",
+                "created_at": now_karachi_naive(),
+            }
+        )
+        session.commit()
+        new_id = _last_insert_id(session)
+
+        row = session.execute(
+            text("SELECT id, name, department_id, description, status FROM wings WHERE id=:id"),
+            {"id": new_id}
+        ).mappings().first()
+
+        return {"ok": True, "success": True, "status": "success", "message": "Wing created", "wing": {
+            "id": row["id"], "name": row["name"], "departmentId": row["department_id"],
+            "description": row["description"], "status": row["status"]
+        }}
+    except Exception as e:
+        session.rollback()
+        return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
+    finally:
+        session.close()
+
+@app.put("/api/config/wings/{wing_id}")
+@app.patch("/api/config/wings/{wing_id}")
+async def update_wing(wing_id: int, payload: WingUpsert):
+    session = get_db_session(engine)
+    try:
+        exists = session.execute(
+            text("SELECT id FROM wings WHERE id=:id"),
+            {"id": wing_id}
+        ).scalar()
+        if not exists:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Wing not found"}, status_code=404)
+
+        data = payload.model_dump(exclude_unset=True)
+
+        if "department_id" in data and data.get("department_id") is not None:
+            dep_exists = session.execute(
+                text("SELECT id FROM departments WHERE id=:id"),
+                {"id": int(data["department_id"])}
+            ).scalar()
+            if not dep_exists:
+                return JSONResponse({"ok": False, "success": False, "status": "error", "error": "department_id not found"}, status_code=404)
+
+        session.execute(
+            text("""
+                UPDATE wings
+                SET
+                  name = COALESCE(:name, name),
+                  department_id = COALESCE(:department_id, department_id),
+                  description = COALESCE(:description, description),
+                  status = COALESCE(:status, status),
+                  updated_at = :updated_at
+                WHERE id = :id
+            """),
+            {
+                "id": wing_id,
+                "name": _s(data.get("name")) if "name" in data else None,
+                "department_id": int(data["department_id"]) if "department_id" in data and data.get("department_id") is not None else None,
+                "description": data.get("description") if "description" in data else None,
+                "status": data.get("status") if "status" in data else None,
+                "updated_at": now_karachi_naive(),
+            }
+        )
+        session.commit()
+
+        row = session.execute(
+            text("SELECT id, name, department_id, description, status FROM wings WHERE id=:id"),
+            {"id": wing_id}
+        ).mappings().first()
+
+        return {"ok": True, "success": True, "status": "success", "message": "Wing saved", "wing": {
+            "id": row["id"], "name": row["name"], "departmentId": row["department_id"],
+            "description": row["description"], "status": row["status"]
+        }}
+    except Exception as e:
+        session.rollback()
+        return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
+    finally:
+        session.close()
+
+@app.delete("/api/config/wings/{wing_id}")
+async def delete_wing(wing_id: int):
+    session = get_db_session(engine)
+    try:
+        exists = session.execute(
+            text("SELECT id FROM wings WHERE id=:id"),
+            {"id": wing_id}
+        ).scalar()
+        if not exists:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Wing not found"}, status_code=404)
+
+        # Optional safety: prevent delete if wards exist
+        ward_cnt = session.execute(
+            text("SELECT COUNT(*) FROM wards WHERE wing_id=:id"),
+            {"id": wing_id}
+        ).scalar() or 0
+        if int(ward_cnt) > 0:
+            return JSONResponse(
+                {"ok": False, "success": False, "status": "error", "error": "Cannot delete wing: wards exist"},
+                status_code=400
+            )
+
+        session.execute(text("DELETE FROM wings WHERE id=:id"), {"id": wing_id})
+        session.commit()
+        return {"ok": True, "success": True, "status": "success", "message": "Wing deleted"}
+    except Exception as e:
+        session.rollback()
+        return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
+    finally:
+        session.close()
+
 # ---------- Wards CRUD ----------
 @app.post("/api/config/wards")
 @app.put("/api/config/wards")
@@ -1075,8 +1470,25 @@ async def create_ward(payload: WardUpsert):
         session.commit()
         session.refresh(w)
 
+        # ✅ save optional department_id / wing_id into DB columns (if they exist)
+        try:
+            session.execute(
+                text("UPDATE wards SET department_id=:did, wing_id=:wid WHERE id=:id"),
+                {
+                    "id": w.id,
+                    "did": int(data["department_id"]) if data.get("department_id") is not None else None,
+                    "wid": int(data["wing_id"]) if data.get("wing_id") is not None else None,
+                }
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+            session.commit()
+
         return {"ok": True, "success": True, "status": "success", "message": "Ward created", "ward": {
             "id": w.id, "name": w.name, "floorId": w.floor_id,
+            "departmentId": data.get("department_id"),
+            "wingId": data.get("wing_id"),
             "wardType": w.ward_type, "description": w.description, "status": w.status
         }}
     except Exception as e:
@@ -1110,8 +1522,46 @@ async def update_ward(ward_id: int, payload: WardUpsert):
         session.commit()
         session.refresh(w)
 
+        # ✅ update optional columns
+        try:
+            if "department_id" in data or "wing_id" in data:
+                session.execute(
+                    text("""
+                        UPDATE wards
+                        SET
+                          department_id = COALESCE(:did, department_id),
+                          wing_id = COALESCE(:wid, wing_id)
+                        WHERE id = :id
+                    """),
+                    {
+                        "id": ward_id,
+                        "did": int(data["department_id"]) if "department_id" in data and data.get("department_id") is not None else None,
+                        "wid": int(data["wing_id"]) if "wing_id" in data and data.get("wing_id") is not None else None,
+                    }
+                )
+                session.commit()
+        except Exception:
+            session.rollback()
+            session.commit()
+
+        # read back optional
+        dep_id = None
+        wing_id = None
+        try:
+            row = session.execute(
+                text("SELECT department_id, wing_id FROM wards WHERE id=:id"),
+                {"id": ward_id}
+            ).mappings().first()
+            if row:
+                dep_id = row.get("department_id")
+                wing_id = row.get("wing_id")
+        except Exception:
+            pass
+
         return {"ok": True, "success": True, "status": "success", "message": "Ward saved", "ward": {
             "id": w.id, "name": w.name, "floorId": w.floor_id,
+            "departmentId": dep_id,
+            "wingId": wing_id,
             "wardType": w.ward_type, "description": w.description, "status": w.status
         }}
     except Exception as e:

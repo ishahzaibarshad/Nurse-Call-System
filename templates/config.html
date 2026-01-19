@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>System Configuration - Hospital Monitoring</title>
 
-  <!-- Keep your existing css -->
   <link href="/static/css/output.css" rel="stylesheet" />
-  <!-- Beautiful UI fallback CSS (works even if tailwind not applied) -->
+
   <style>
     :root{
       --bg1:#f6f7ff;
@@ -38,16 +37,8 @@
       min-height: 100vh;
     }
 
-    .layout{
-      display:flex;
-      min-height:100vh;
-      width:100%;
-    }
-    .sidebar{
-      width: 260px;
-      padding: 18px;
-      display:none;
-    }
+    .layout{ display:flex; min-height:100vh; width:100%; }
+    .sidebar{ width: 260px; padding: 18px; display:none; }
     .sidebar .shell{
       height: calc(100vh - 36px);
       border: 1px solid rgba(255,255,255,.25);
@@ -57,62 +48,26 @@
       overflow:auto;
     }
     .sidebar .shell *{ color:#fff; }
-    @media (min-width: 1024px){
-      .sidebar{ display:block; }
-    }
+    @media (min-width: 1024px){ .sidebar{ display:block; } }
 
-    .main{
-      flex:1;
-      padding: 22px;
-    }
-    .container{
-      max-width: 1180px;
-      margin: 0 auto;
-    }
+    .main{ flex:1; padding: 22px; }
+    .container{ max-width: 1180px; margin: 0 auto; }
 
     .topbar{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:14px;
-      margin-bottom: 16px;
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap:14px; margin-bottom: 16px;
     }
-    .title{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-    .title h1{
-      margin:0;
-      font-size: 26px;
-      letter-spacing: -0.02em;
-    }
-    .title p{
-      margin:0;
-      color:var(--muted);
-      font-size: 13px;
-    }
+    .title{ display:flex; flex-direction:column; gap:4px; }
+    .title h1{ margin:0; font-size: 26px; letter-spacing: -0.02em; }
+    .title p{ margin:0; color:var(--muted); font-size: 13px; }
 
     .actions{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap: wrap;
-      justify-content:flex-end;
-    }
-
-    .chipRow{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin: 14px 0 18px;
+      display:flex; align-items:center; gap:10px;
+      flex-wrap: wrap; justify-content:flex-end;
     }
 
     .tabs{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      padding: 10px;
+      display:flex; gap:10px; flex-wrap:wrap; padding: 10px;
       background: rgba(255,255,255,.75);
       border: 1px solid rgba(226,232,240,.9);
       border-radius: 999px;
@@ -121,18 +76,11 @@
     }
     .tabBtn{
       border:1px solid rgba(226,232,240,1);
-      background: #fff;
-      color: var(--text);
-      padding: 9px 12px;
-      border-radius: 999px;
-      cursor:pointer;
-      font-weight:600;
-      font-size: 13px;
-      display:flex;
-      align-items:center;
-      gap:8px;
-      transition: all .18s ease;
-      user-select:none;
+      background: #fff; color: var(--text);
+      padding: 9px 12px; border-radius: 999px;
+      cursor:pointer; font-weight:600; font-size: 13px;
+      display:flex; align-items:center; gap:8px;
+      transition: all .18s ease; user-select:none;
     }
     .tabBtn:hover{
       transform: translateY(-1px);
@@ -141,22 +89,14 @@
     }
     .tabBtn.active{
       background: linear-gradient(135deg, rgba(79,70,229,1), rgba(6,182,212,1));
-      color:#fff;
-      border-color: transparent;
+      color:#fff; border-color: transparent;
       box-shadow: 0 15px 40px rgba(79,70,229,.25);
     }
     .countPill{
-      font-size: 12px;
-      padding: 2px 9px;
-      border-radius: 999px;
-      background: rgba(15,23,42,.06);
-      color: var(--text);
-      font-weight: 700;
+      font-size: 12px; padding: 2px 9px; border-radius: 999px;
+      background: rgba(15,23,42,.06); color: var(--text); font-weight: 700;
     }
-    .tabBtn.active .countPill{
-      background: rgba(255,255,255,.22);
-      color:#fff;
-    }
+    .tabBtn.active .countPill{ background: rgba(255,255,255,.22); color:#fff; }
 
     .card{
       background: rgba(255,255,255,.82);
@@ -169,44 +109,18 @@
     .cardHead{
       padding: 16px 18px;
       border-bottom: 1px solid rgba(226,232,240,.9);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap: wrap;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; flex-wrap: wrap;
     }
-    .cardHead h3{
-      margin:0;
-      font-size: 16px;
-      letter-spacing: -0.01em;
-    }
-    .cardHead .sub{
-      margin-top:4px;
-      color:var(--muted);
-      font-size: 12px;
-    }
-    .cardBody{
-      padding: 14px 14px 16px;
-    }
-
-    .gridTop{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap: 12px;
-      align-items:center;
-      margin-bottom: 12px;
-    }
-    @media(max-width: 860px){
-      .gridTop{ grid-template-columns: 1fr; }
-    }
+    .cardHead h3{ margin:0; font-size: 16px; letter-spacing: -0.01em; }
+    .cardHead .sub{ margin-top:4px; color:var(--muted); font-size: 12px; }
+    .cardBody{ padding: 14px 14px 16px; }
 
     .input{
-      width:100%;
-      padding: 11px 12px;
+      width:100%; padding: 11px 12px;
       border-radius: 12px;
       border: 1px solid rgba(226,232,240,1);
-      outline:none;
-      font-size: 14px;
+      outline:none; font-size: 14px;
       background:#fff;
       transition: all .15s ease;
     }
@@ -217,8 +131,7 @@
 
     .btn{
       border:1px solid rgba(226,232,240,1);
-      background:#fff;
-      color: var(--text);
+      background:#fff; color: var(--text);
       padding: 10px 12px;
       border-radius: 12px;
       cursor:pointer;
@@ -256,13 +169,11 @@
       width:100%;
       border-collapse: separate;
       border-spacing:0;
-      min-width: 780px;
+      min-width: 820px;
       font-size: 13px;
     }
     thead th{
-      position: sticky;
-      top:0;
-      z-index:2;
+      position: sticky; top:0; z-index:2;
       background: linear-gradient(180deg, #ffffff, #f8fafc);
       color: var(--muted);
       font-weight: 800;
@@ -277,19 +188,13 @@
       vertical-align: middle;
       white-space: nowrap;
     }
-    tbody tr:hover{
-      background: rgba(79,70,229,.06);
-    }
+    tbody tr:hover{ background: rgba(79,70,229,.06); }
     tbody tr:last-child td{ border-bottom: 0; }
 
     .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-weight: 800;
-      font-size: 12px;
+      display:inline-flex; align-items:center; gap:6px;
+      padding: 4px 10px; border-radius: 999px;
+      font-weight: 800; font-size: 12px;
       border: 1px solid rgba(226,232,240,1);
       background: rgba(15,23,42,.04);
     }
@@ -297,11 +202,9 @@
     .bWarn{ background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.30); color: #92400e; }
     .bOff{ background: rgba(100,116,139,.12); border-color: rgba(100,116,139,.22); color: #334155; }
 
-    /* Toast */
     #toast{
       position: fixed;
-      bottom: 16px;
-      right: 16px;
+      bottom: 16px; right: 16px;
       max-width: 420px;
       padding: 12px 14px;
       border-radius: 16px;
@@ -311,21 +214,18 @@
       border: 1px solid rgba(255,255,255,.14);
       display:none;
       animation: pop .18s ease;
+      z-index: 9999;
     }
-    @keyframes pop{
-      from{ transform: translateY(10px); opacity:.5; }
-      to{ transform: translateY(0); opacity:1; }
-    }
+    @keyframes pop{ from{ transform: translateY(10px); opacity:.5; } to{ transform: translateY(0); opacity:1; } }
 
-    /* Modal */
     #modalWrap{
-      position: fixed;
-      inset:0;
+      position: fixed; inset:0;
       background: rgba(2,6,23,.48);
       display:none;
       align-items:center;
       justify-content:center;
       padding: 18px;
+      z-index: 9998;
     }
     .modal{
       width: min(760px, 100%);
@@ -345,20 +245,10 @@
       gap: 10px;
       border-bottom: 1px solid rgba(226,232,240,.9);
     }
-    .modalHead h2{
-      margin:0;
-      font-size: 16px;
-      letter-spacing: -0.01em;
-    }
+    .modalHead h2{ margin:0; font-size: 16px; letter-spacing: -0.01em; }
     .modalBody{ padding: 16px 18px 4px; }
-    .modalGrid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    @media(max-width: 720px){
-      .modalGrid{ grid-template-columns: 1fr; }
-    }
+    .modalGrid{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media(max-width: 720px){ .modalGrid{ grid-template-columns: 1fr; } }
     .field label{
       display:block;
       font-size: 12px;
@@ -387,23 +277,14 @@
     }
 
     .mutedSmall{ color: var(--muted); font-size: 12px; }
-
-    .empty{
-      padding: 22px;
-      text-align:center;
-      color: var(--muted);
-    }
+    .empty{ padding: 22px; text-align:center; color: var(--muted); }
     .empty strong{ color: var(--text); }
-
-    .icon{
-      width: 16px; height:16px; display:inline-block;
-    }
+    .icon{ width: 16px; height:16px; display:inline-block; }
   </style>
 </head>
 
 <body>
   <div class="layout">
-    <!-- Sidebar (optional) -->
     <aside class="sidebar">
       <div id="sidebar" class="shell">
         {% include "sidebar.html" %}
@@ -413,11 +294,10 @@
     <main class="main">
       <div class="container">
 
-        <!-- Top -->
         <div class="topbar">
           <div class="title">
             <h1>System Configuration</h1>
-            <p>Manage Floors • Wards • Rooms • Beds • Colors (fast edit + clean UI)</p>
+            <p>Manage Floors • Departments • Wings • Wards • Rooms • Beds • Colors</p>
           </div>
 
           <div class="actions">
@@ -432,20 +312,21 @@
           </div>
         </div>
 
-        <!-- Tabs -->
         <div class="tabs" id="tabs">
           <button class="tabBtn active" data-tab="floors">Floors <span class="countPill" id="count-floors">0</span></button>
+          <button class="tabBtn" data-tab="departments">Departments <span class="countPill" id="count-departments">0</span></button>
+          <button class="tabBtn" data-tab="wings">Wings <span class="countPill" id="count-wings">0</span></button>
           <button class="tabBtn" data-tab="wards">Wards <span class="countPill" id="count-wards">0</span></button>
           <button class="tabBtn" data-tab="rooms">Rooms <span class="countPill" id="count-rooms">0</span></button>
           <button class="tabBtn" data-tab="beds">Beds <span class="countPill" id="count-beds">0</span></button>
           <button class="tabBtn" data-tab="colors">Colors <span class="countPill" id="count-colors">0</span></button>
         </div>
 
-        <!-- Toast -->
         <div id="toast"></div>
 
-        <!-- Sections -->
         <section id="sec-floors" style="margin-top:16px;"></section>
+        <section id="sec-departments" style="margin-top:16px; display:none;"></section>
+        <section id="sec-wings" style="margin-top:16px; display:none;"></section>
         <section id="sec-wards" style="margin-top:16px; display:none;"></section>
         <section id="sec-rooms" style="margin-top:16px; display:none;"></section>
         <section id="sec-beds" style="margin-top:16px; display:none;"></section>
@@ -455,7 +336,6 @@
     </main>
   </div>
 
-  <!-- Modal -->
   <div id="modalWrap">
     <div class="modal">
       <div class="modalHead">
@@ -479,6 +359,8 @@
 (function () {
   const API = {
     floors: "/api/config/floors",
+    departments: "/api/config/departments",
+    wings: "/api/config/wings",
     wards: "/api/config/wards",
     rooms: "/api/config/rooms",
     beds: "/api/config/beds",
@@ -486,7 +368,13 @@
   };
 
   const state = {
-    floors: [], wards: [], rooms: [], beds: [], colors: [],
+    floors: [],
+    departments: [],
+    wings: [],
+    wards: [],
+    rooms: [],
+    beds: [],
+    colors: [],
     activeTab: "floors",
     q: ""
   };
@@ -504,7 +392,7 @@
     el.textContent = msg;
     el.style.display = "block";
     clearTimeout(el._t);
-    el._t = setTimeout(() => { el.style.display = "none"; }, 2600);
+    el._t = setTimeout(() => { el.style.display = "none"; }, 2800);
   }
 
   async function apiFetch(url, opts = {}) {
@@ -532,21 +420,21 @@
   }
 
   function setCounts() {
-    $("count-floors").textContent = state.floors.length;
-    $("count-wards").textContent  = state.wards.length;
-    $("count-rooms").textContent  = state.rooms.length;
-    $("count-beds").textContent   = state.beds.length;
-    $("count-colors").textContent = state.colors.length;
+    $("count-floors").textContent      = state.floors.length;
+    $("count-departments").textContent = state.departments.length;
+    $("count-wings").textContent       = state.wings.length;
+    $("count-wards").textContent       = state.wards.length;
+    $("count-rooms").textContent       = state.rooms.length;
+    $("count-beds").textContent        = state.beds.length;
+    $("count-colors").textContent      = state.colors.length;
   }
 
   function setTab(tab) {
     state.activeTab = tab;
     document.querySelectorAll(".tabBtn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
-
-    ["floors","wards","rooms","beds","colors"].forEach(t => {
+    ["floors","departments","wings","wards","rooms","beds","colors"].forEach(t => {
       $("sec-" + t).style.display = (t === tab) ? "block" : "none";
     });
-
     renderActive();
   }
 
@@ -565,19 +453,25 @@
   }
 
   async function loadAll() {
-    const [floors, wards, rooms, beds, colors] = await Promise.all([
+    const results = await Promise.allSettled([
       apiFetch(API.floors),
+      apiFetch(API.departments),
+      apiFetch(API.wings),
       apiFetch(API.wards),
       apiFetch(API.rooms),
       apiFetch(API.beds),
       apiFetch(API.colors),
     ]);
 
-    state.floors = floors.floors || [];
-    state.wards  = wards.wards || [];
-    state.rooms  = rooms.rooms || [];
-    state.beds   = beds.beds || [];
-    state.colors = colors.colors || [];
+    const pickList = (res, key) => (res.status === "fulfilled" && res.value && res.value[key]) ? res.value[key] : [];
+
+    state.floors      = pickList(results[0], "floors");
+    state.departments = pickList(results[1], "departments");
+    state.wings       = pickList(results[2], "wings");
+    state.wards       = pickList(results[3], "wards");
+    state.rooms       = pickList(results[4], "rooms");
+    state.beds        = pickList(results[5], "beds");
+    state.colors      = pickList(results[6], "colors");
 
     setCounts();
     renderActive();
@@ -614,55 +508,142 @@
     `;
   }
 
+  // ---------- Renders ----------
   function renderFloors() {
     const items = filterList(state.floors, ["name","status","floor_number","floorNumber","description"]);
-    const rows = items.map(f => `
-      <tr>
-        <td><strong>${esc(f.name)}</strong></td>
-        <td>${esc(f.floor_number ?? f.floorNumber ?? "")}</td>
-        <td>${badge(f.status)}</td>
-        <td>${esc(f.wards ?? 0)}</td>
-        <td>
-          <button class="btn" data-action="edit-floor" data-id="${esc(f.id)}" type="button">Edit</button>
-          <button class="btn btnDanger" data-action="del-floor" data-id="${esc(f.id)}" type="button">Delete</button>
-        </td>
-      </tr>
-    `).join("");
+    const rows = items.map(f => {
+      const deptCount = state.departments.filter(d => String(d.floor_id ?? d.floorId ?? "") === String(f.id)).length;
+      return `
+        <tr>
+          <td><strong>${esc(f.name)}</strong></td>
+          <td>${esc(f.floor_number ?? f.floorNumber ?? "")}</td>
+          <td>${badge(f.status)}</td>
+          <td>${esc(deptCount)}</td>
+          <td>
+            <button class="btn" data-action="edit-floor" data-id="${esc(f.id)}" type="button">Edit</button>
+            <button class="btn btnDanger" data-action="del-floor" data-id="${esc(f.id)}" type="button">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
 
     $("sec-floors").innerHTML = shellCard(
       "Floors",
-      "Create floors, set status and manage structure.",
+      "Floors → Departments → Wings → Wards → Rooms → Beds",
       "add-floor",
-      `<th>Name</th><th>No</th><th>Status</th><th>Wards</th><th>Actions</th>`,
+      `<th>Name</th><th>No</th><th>Status</th><th>Departments</th><th>Actions</th>`,
       rows,
       5
     );
   }
 
+  function renderDepartments() {
+    const floorNameById = Object.fromEntries(state.floors.map(f => [String(f.id), f.name]));
+    const items = filterList(state.departments, ["name","status","description","floor_id","floorId"]);
+    const rows = items.map(d => {
+      const wingCount = state.wings.filter(w => String(w.department_id ?? w.departmentId ?? "") === String(d.id)).length;
+      return `
+        <tr>
+          <td><strong>${esc(d.name)}</strong></td>
+          <td>${esc(floorNameById[String(d.floor_id ?? d.floorId)] || (d.floor_id ?? d.floorId ?? ""))}</td>
+          <td>${badge(d.status)}</td>
+          <td>${esc(wingCount)}</td>
+          <td>
+            <button class="btn" data-action="edit-department" data-id="${esc(d.id)}" type="button">Edit</button>
+            <button class="btn btnDanger" data-action="del-department" data-id="${esc(d.id)}" type="button">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    $("sec-departments").innerHTML = shellCard(
+      "Departments",
+      "Departments belong to Floors.",
+      "add-department",
+      `<th>Name</th><th>Floor</th><th>Status</th><th>Wings</th><th>Actions</th>`,
+      rows,
+      5
+    );
+  }
+
+  function renderWings() {
+    const floorNameById = Object.fromEntries(state.floors.map(f => [String(f.id), f.name]));
+    const deptById = Object.fromEntries(state.departments.map(d => [String(d.id), d]));
+    const items = filterList(state.wings, ["name","status","description","department_id","departmentId"]);
+
+    const rows = items.map(w => {
+      const dept = deptById[String(w.department_id ?? w.departmentId)] || null;
+      const floorName = dept ? (floorNameById[String(dept.floor_id ?? dept.floorId)] || "") : "";
+      const wardCount = state.wards.filter(x => String(x.wing_id ?? x.wingId ?? "") === String(w.id)).length;
+
+      return `
+        <tr>
+          <td><strong>${esc(w.name)}</strong></td>
+          <td>${esc(dept?.name || (w.department_id ?? w.departmentId ?? ""))}</td>
+          <td>${esc(floorName)}</td>
+          <td>${badge(w.status)}</td>
+          <td>${esc(wardCount)}</td>
+          <td>
+            <button class="btn" data-action="edit-wing" data-id="${esc(w.id)}" type="button">Edit</button>
+            <button class="btn btnDanger" data-action="del-wing" data-id="${esc(w.id)}" type="button">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    $("sec-wings").innerHTML = shellCard(
+      "Wings",
+      "Wings belong to Departments.",
+      "add-wing",
+      `<th>Name</th><th>Department</th><th>Floor</th><th>Status</th><th>Wards</th><th>Actions</th>`,
+      rows,
+      6
+    );
+  }
+
   function renderWards() {
     const floorNameById = Object.fromEntries(state.floors.map(f => [String(f.id), f.name]));
+    const deptById = Object.fromEntries(state.departments.map(d => [String(d.id), d]));
+    const wingById = Object.fromEntries(state.wings.map(w => [String(w.id), w]));
+
     const items = filterList(state.wards, ["name","ward_type","wardType","type","status","description"]);
-    const rows = items.map(w => `
-      <tr>
-        <td><strong>${esc(w.name)}</strong></td>
-        <td>${esc(floorNameById[String(w.floor_id ?? w.floorId)] || (w.floor_id ?? w.floorId ?? ""))}</td>
-        <td>${esc(w.ward_type || w.wardType || w.type || "")}</td>
-        <td>${badge(w.status)}</td>
-        <td>${esc(w.rooms ?? 0)}</td>
-        <td>
-          <button class="btn" data-action="edit-ward" data-id="${esc(w.id)}" type="button">Edit</button>
-          <button class="btn btnDanger" data-action="del-ward" data-id="${esc(w.id)}" type="button">Delete</button>
-        </td>
-      </tr>
-    `).join("");
+
+    const rows = items.map(w => {
+      const wingId = w.wing_id ?? w.wingId;
+      const deptId = w.department_id ?? w.departmentId;
+      const floorId = w.floor_id ?? w.floorId;
+
+      const wing = wingId != null ? wingById[String(wingId)] : null;
+      const dept = wing ? (deptById[String(wing.department_id ?? wing.departmentId)] || null)
+                        : (deptId != null ? (deptById[String(deptId)] || null) : null);
+
+      const floorName = dept ? (floorNameById[String(dept.floor_id ?? dept.floorId)] || "")
+                             : (floorNameById[String(floorId)] || "");
+
+      return `
+        <tr>
+          <td><strong>${esc(w.name)}</strong></td>
+          <td>${esc(wing?.name || (wingId ?? "—"))}</td>
+          <td>${esc(dept?.name || (deptId ?? "—"))}</td>
+          <td>${esc(floorName || (floorId ?? "—"))}</td>
+          <td>${esc(w.ward_type || w.wardType || w.type || "")}</td>
+          <td>${badge(w.status)}</td>
+          <td>${esc(w.rooms ?? 0)}</td>
+          <td>
+            <button class="btn" data-action="edit-ward" data-id="${esc(w.id)}" type="button">Edit</button>
+            <button class="btn btnDanger" data-action="del-ward" data-id="${esc(w.id)}" type="button">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
 
     $("sec-wards").innerHTML = shellCard(
       "Wards",
-      "Assign wards to floors and maintain type/status.",
+      "Preferred: assign wards to Wings (auto-derives Department/Floor). Old data can still use Floor.",
       "add-ward",
-      `<th>Name</th><th>Floor</th><th>Type</th><th>Status</th><th>Rooms</th><th>Actions</th>`,
+      `<th>Name</th><th>Wing</th><th>Department</th><th>Floor</th><th>Type</th><th>Status</th><th>Rooms</th><th>Actions</th>`,
       rows,
-      6
+      8
     );
   }
 
@@ -694,10 +675,9 @@
   }
 
   function renderBeds() {
-    const roomNameById = Object.fromEntries(
-      state.rooms.map(r => [String(r.id), (r.room_name || r.roomName || r.name || "")])
-    );
+    const roomNameById = Object.fromEntries(state.rooms.map(r => [String(r.id), (r.room_name || r.roomName || r.name || "")]));
     const items = filterList(state.beds, ["bed_number","bedNumber","bedNo","bed_name","bedName","intercom_ip","ipAddress","ip_address","status","room_name","roomName"]);
+
     const rows = items.map(b => `
       <tr>
         <td>${esc(roomNameById[String(b.room_id ?? b.roomId)] || (b.room_name || b.room_id || ""))}</td>
@@ -714,7 +694,7 @@
 
     $("sec-beds").innerHTML = shellCard(
       "Beds",
-      "Beds map intercom IP to a room. Edit quickly and keep clean mapping.",
+      "Beds map intercom IP to a room.",
       "add-bed",
       `<th>Room</th><th>Bed No</th><th>Bed Name</th><th>Intercom IP</th><th>Status</th><th>Actions</th>`,
       rows,
@@ -747,6 +727,8 @@
 
   function renderActive() {
     if (state.activeTab === "floors") renderFloors();
+    if (state.activeTab === "departments") renderDepartments();
+    if (state.activeTab === "wings") renderWings();
     if (state.activeTab === "wards") renderWards();
     if (state.activeTab === "rooms") renderRooms();
     if (state.activeTab === "beds") renderBeds();
@@ -760,11 +742,8 @@
   const modalForm  = $("modalForm");
   let modalCtx = { entity: null, mode: null, id: null };
 
-  function openModal(entity, mode, item) {
-    modalCtx = { entity, mode, id: item?.id ?? null };
-    modalTitle.textContent = (mode === "create" ? "Add " : "Edit ") + entity.toUpperCase();
-
-    const statusSelect = (val, opts) => `
+  function statusSelect(val, opts) {
+    return `
       <div class="field">
         <label>Status</label>
         <select name="status">
@@ -774,6 +753,11 @@
         </select>
       </div>
     `;
+  }
+
+  function openModal(entity, mode, item) {
+    modalCtx = { entity, mode, id: item?.id ?? null };
+    modalTitle.textContent = (mode === "create" ? "Add " : "Edit ") + entity.toUpperCase();
 
     if (entity === "floor") {
       modalBody.innerHTML = `
@@ -793,14 +777,12 @@
       `;
     }
 
-    if (entity === "ward") {
-      const floorOptions = state.floors
-        .map(f => `
-          <option value="${esc(f.id)}" ${
-            String(item?.floor_id ?? item?.floorId ?? "") === String(f.id) ? "selected" : ""
-          }>${esc(f.name)}</option>
-        `)
-        .join("");
+    if (entity === "department") {
+      const floorOptions = state.floors.map(f => `
+        <option value="${esc(f.id)}" ${
+          String(item?.floor_id ?? item?.floorId ?? "") === String(f.id) ? "selected" : ""
+        }>${esc(f.name)}</option>
+      `).join("");
 
       modalBody.innerHTML = `
         <div class="field">
@@ -815,8 +797,32 @@
           </select>
         </div>
         <div class="field">
-          <label>Ward Type</label>
-          <input name="ward_type" value="${esc(item?.ward_type || item?.wardType || item?.type || "")}">
+          <label>Description</label>
+          <input name="description" value="${esc(item?.description || "")}">
+        </div>
+        ${statusSelect(item?.status || "active", ["active","inactive"])}
+      `;
+    }
+
+    if (entity === "wing") {
+      const deptOptions = state.departments.map(d => {
+        const floor = state.floors.find(f => String(f.id) === String(d.floor_id ?? d.floorId));
+        const label = floor ? `${d.name} (Floor: ${floor.name})` : d.name;
+        const selected = String(item?.department_id ?? item?.departmentId ?? "") === String(d.id);
+        return `<option value="${esc(d.id)}" ${selected ? "selected" : ""}>${esc(label)}</option>`;
+      }).join("");
+
+      modalBody.innerHTML = `
+        <div class="field">
+          <label>Name</label>
+          <input name="name" value="${esc(item?.name || "")}" required>
+        </div>
+        <div class="field">
+          <label>Department</label>
+          <select name="department_id" required>
+            <option value="">Select</option>
+            ${deptOptions}
+          </select>
         </div>
         <div class="field">
           <label>Description</label>
@@ -826,15 +832,66 @@
       `;
     }
 
-    // ✅ FIXED: wardOptions scope + removed extra brace + option labels
+    if (entity === "ward") {
+      const wingOptions = state.wings.map(w => {
+        const dept = state.departments.find(d => String(d.id) === String(w.department_id ?? w.departmentId));
+        const floor = dept ? state.floors.find(f => String(f.id) === String(dept.floor_id ?? dept.floorId)) : null;
+        const label = `${w.name}${dept ? " • " + dept.name : ""}${floor ? " • " + floor.name : ""}`;
+        const selected = String(item?.wing_id ?? item?.wingId ?? "") === String(w.id);
+        return `<option value="${esc(w.id)}" ${selected ? "selected" : ""}>${esc(label)}</option>`;
+      }).join("");
+
+      const floorOptions = state.floors.map(f => `
+        <option value="${esc(f.id)}" ${
+          String(item?.floor_id ?? item?.floorId ?? "") === String(f.id) ? "selected" : ""
+        }>${esc(f.name)}</option>
+      `).join("");
+
+      modalBody.innerHTML = `
+        <div class="field">
+          <label>Name</label>
+          <input name="name" value="${esc(item?.name || "")}" required>
+        </div>
+
+        <div class="field">
+          <label>Wing (preferred)</label>
+          <select name="wing_id">
+            <option value="">Select (optional)</option>
+            ${wingOptions}
+          </select>
+          <div class="mutedSmall" style="margin-top:6px;">
+            If Wing selected, Department/Floor will be auto-filled in request.
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Floor (fallback)</label>
+          <select name="floor_id">
+            <option value="">Select (optional)</option>
+            ${floorOptions}
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Ward Type</label>
+          <input name="ward_type" value="${esc(item?.ward_type || item?.wardType || item?.type || "")}">
+        </div>
+
+        <div class="field">
+          <label>Description</label>
+          <input name="description" value="${esc(item?.description || "")}">
+        </div>
+
+        ${statusSelect(item?.status || "active", ["active","inactive"])}
+      `;
+    }
+
     if (entity === "room") {
-      const wardOptions = state.wards
-        .map(w => `
-          <option value="${esc(w.id)}" ${
-            String(item?.ward_id ?? item?.wardId ?? "") === String(w.id) ? "selected" : ""
-          }>${esc(w.name)}</option>
-        `)
-        .join("");
+      const wardOptions = state.wards.map(w => `
+        <option value="${esc(w.id)}" ${
+          String(item?.ward_id ?? item?.wardId ?? "") === String(w.id) ? "selected" : ""
+        }>${esc(w.name)}</option>
+      `).join("");
 
       modalBody.innerHTML = `
         <div class="field">
@@ -860,15 +917,12 @@
       `;
     }
 
-    // ✅ FIXED: bed -> room options, correct selected field, labels, closing tags
     if (entity === "bed") {
-      const roomOptions = state.rooms
-        .map(r => {
-          const label = (r.room_name || r.roomName || r.name || `Room ${r.id}`);
-          const selected = String(item?.room_id ?? item?.roomId ?? "") === String(r.id);
-          return `<option value="${esc(r.id)}" ${selected ? "selected" : ""}>${esc(label)}</option>`;
-        })
-        .join("");
+      const roomOptions = state.rooms.map(r => {
+        const label = (r.room_name || r.roomName || r.name || `Room ${r.id}`);
+        const selected = String(item?.room_id ?? item?.roomId ?? "") === String(r.id);
+        return `<option value="${esc(r.id)}" ${selected ? "selected" : ""}>${esc(label)}</option>`;
+      }).join("");
 
       modalBody.innerHTML = `
         <div class="field">
@@ -925,25 +979,44 @@
     if (!btn) return;
 
     const action = btn.dataset.action;
-    const id = btn.dataset.id ?? null; // ✅ don't force Number()
+    const id = btn.dataset.id ?? null;
 
     try {
+      // Add
       if (action === "add-floor") return openModal("floor", "create", null);
-      if (action === "add-ward")  return openModal("ward", "create", null);
-      if (action === "add-room")  return openModal("room", "create", null);
-      if (action === "add-bed")   return openModal("bed",  "create", null);
-      if (action === "add-color") return openModal("color","create", null);
+      if (action === "add-department") return openModal("department", "create", null);
+      if (action === "add-wing") return openModal("wing", "create", null);
+      if (action === "add-ward") return openModal("ward", "create", null);
+      if (action === "add-room") return openModal("room", "create", null);
+      if (action === "add-bed") return openModal("bed", "create", null);
+      if (action === "add-color") return openModal("color", "create", null);
 
+      // Edit
       if (action === "edit-floor") return openModal("floor", "edit", state.floors.find(x => String(x.id) === String(id)));
-      if (action === "edit-ward")  return openModal("ward",  "edit", state.wards.find(x => String(x.id) === String(id)));
-      if (action === "edit-room")  return openModal("room",  "edit", state.rooms.find(x => String(x.id) === String(id)));
-      if (action === "edit-bed")   return openModal("bed",   "edit", state.beds.find(x => String(x.id) === String(id)));
+      if (action === "edit-department") return openModal("department", "edit", state.departments.find(x => String(x.id) === String(id)));
+      if (action === "edit-wing") return openModal("wing", "edit", state.wings.find(x => String(x.id) === String(id)));
+      if (action === "edit-ward") return openModal("ward", "edit", state.wards.find(x => String(x.id) === String(id)));
+      if (action === "edit-room") return openModal("room", "edit", state.rooms.find(x => String(x.id) === String(id)));
+      if (action === "edit-bed") return openModal("bed", "edit", state.beds.find(x => String(x.id) === String(id)));
       if (action === "edit-color") return openModal("color", "edit", state.colors.find(x => String(x.id) === String(id)));
 
+      // Delete
       if (action === "del-floor") {
         if (!confirm("Delete floor?")) return;
         await apiFetch(`${API.floors}/${id}`, { method: "DELETE" });
         toast("Floor deleted");
+        return loadAll();
+      }
+      if (action === "del-department") {
+        if (!confirm("Delete department?")) return;
+        await apiFetch(`${API.departments}/${id}`, { method: "DELETE" });
+        toast("Department deleted");
+        return loadAll();
+      }
+      if (action === "del-wing") {
+        if (!confirm("Delete wing?")) return;
+        await apiFetch(`${API.wings}/${id}`, { method: "DELETE" });
+        toast("Wing deleted");
         return loadAll();
       }
       if (action === "del-ward") {
@@ -975,6 +1048,7 @@
     }
   });
 
+  // ---------- Save ----------
   modalForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(modalForm);
@@ -994,21 +1068,76 @@
         else await apiFetch(`${API.floors}/${id}`, { method: "PUT", body });
       }
 
-      if (entity === "ward") {
+      if (entity === "department") {
+        const floorRaw = fd.get("floor_id");
+        if (!floorRaw) throw new Error("Please select a Floor for Department.");
         const body = {
           name: fd.get("name"),
-          floor_id: Number(fd.get("floor_id")),
+          floor_id: Number(floorRaw),
+          description: fd.get("description"),
+          status: fd.get("status"),
+        };
+        if (mode === "create") await apiFetch(API.departments, { method: "POST", body });
+        else await apiFetch(`${API.departments}/${id}`, { method: "PUT", body });
+      }
+
+      if (entity === "wing") {
+        const depRaw = fd.get("department_id");
+        if (!depRaw) throw new Error("Please select a Department for Wing.");
+        const body = {
+          name: fd.get("name"),
+          department_id: Number(depRaw),
+          description: fd.get("description"),
+          status: fd.get("status"),
+        };
+        if (mode === "create") await apiFetch(API.wings, { method: "POST", body });
+        else await apiFetch(`${API.wings}/${id}`, { method: "PUT", body });
+      }
+
+      if (entity === "ward") {
+        const wingRaw = fd.get("wing_id");
+        const floorRaw = fd.get("floor_id");
+
+        const body = {
+          name: fd.get("name"),
           ward_type: fd.get("ward_type"),
           description: fd.get("description"),
           status: fd.get("status"),
         };
+
+        // ✅ If wing chosen -> auto derive department_id and floor_id
+        if (wingRaw) {
+          const wingId = Number(wingRaw);
+          body.wing_id = wingId;
+
+          const wing = state.wings.find(w => String(w.id) === String(wingId));
+          if (wing) {
+            const depId = wing.department_id ?? wing.departmentId;
+            if (depId != null) {
+              body.department_id = Number(depId);
+
+              const dep = state.departments.find(d => String(d.id) === String(depId));
+              if (dep) {
+                const flId = dep.floor_id ?? dep.floorId;
+                if (flId != null) body.floor_id = Number(flId);
+              }
+            }
+          }
+        } else if (floorRaw) {
+          body.floor_id = Number(floorRaw);
+        } else {
+          throw new Error("Please select Wing (preferred) OR Floor (fallback) for Ward.");
+        }
+
         if (mode === "create") await apiFetch(API.wards, { method: "POST", body });
         else await apiFetch(`${API.wards}/${id}`, { method: "PUT", body });
       }
 
       if (entity === "room") {
+        const wardRaw = fd.get("ward_id");
+        if (!wardRaw) throw new Error("Please select a Ward for Room.");
         const body = {
-          ward_id: Number(fd.get("ward_id")),
+          ward_id: Number(wardRaw),
           room_name: fd.get("room_name"),
           room_number: fd.get("room_number"),
           system_ip: fd.get("system_ip"),
@@ -1019,16 +1148,21 @@
       }
 
       if (entity === "bed") {
+        const roomRaw = fd.get("room_id");
+        if (!roomRaw) throw new Error("Please select a Room for Bed.");
+        const ipVal = fd.get("intercom_ip") || "";
+
+        // ✅ send both keys (safe with any backend mapping)
         const body = {
-          room_id: Number(fd.get("room_id")),
+          room_id: Number(roomRaw),
           bed_number: fd.get("bed_number"),
           bed_name: fd.get("bed_name"),
-          intercom_ip: fd.get("intercom_ip"),
+          intercom_ip: ipVal,
+          ip_address: ipVal,
           status: fd.get("status"),
         };
 
         if (mode === "create") {
-          // supports either POST or PUT create (depends on your backend)
           try { await apiFetch(API.beds, { method: "POST", body }); }
           catch { await apiFetch(API.beds, { method: "PUT", body }); }
         } else {

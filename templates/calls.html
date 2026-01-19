@@ -30,15 +30,16 @@
       --radius2:22px;
     }
 
-    *{ 
-      box-sizing:border-box; 
+    *{
+      box-sizing:border-box;
       margin: 0;
       padding: 0;
     }
-    
-    html, body{ 
-      height:100%;
-      overflow: hidden; /* Prevent body scrolling */
+
+    /* ✅ Fix stretch: use dvh and keep only main/sidebar scroll */
+    html, body{
+      height: 100%;
+      overflow: hidden;
     }
 
     body{
@@ -48,29 +49,29 @@
         radial-gradient(1100px 700px at 12% 10%, rgba(79,70,229,.10), transparent 55%),
         radial-gradient(1100px 700px at 90% 5%, rgba(37,99,235,.08), transparent 55%),
         linear-gradient(180deg, var(--bg1), var(--bg2));
-      min-height:100vh;
-      overflow: hidden; /* Prevent body scrolling */
+      min-height: 100dvh;
+      overflow: hidden;
     }
 
-    .layout{ 
-      display:flex; 
-      height:100vh; 
+    .layout{
+      display:flex;
+      height: 100dvh;   /* ✅ */
       width:100%;
-      overflow: hidden; /* Prevent layout scrolling */
+      overflow: hidden;
     }
 
     /* Enhanced Logout Button */
     .logout-btn {
       position: fixed;
-      bottom: 0px;
-      left: 24px;
+      bottom: 35px;
+      left: 28px;
       background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
       color: white;
-      font-size: 18px; /* Larger font */
-      font-weight: 900; /* Bolder */
-      padding: 16px 32px; /* Larger padding */
-      border-radius: 16px; /* More rounded */
-      z-index: 2000; /* Higher z-index */
+      font-size: 18px;
+      font-weight: 900;
+      padding: 5px 5px;
+      border-radius: 16px;
+      z-index: 2000;
       box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35);
       display: flex;
       align-items: center;
@@ -80,7 +81,7 @@
       transition: all 0.3s ease;
       text-decoration: none;
       letter-spacing: 0.5px;
-      min-width: 160px; /* Ensure minimum size */
+      min-width: 70px;
       justify-content: center;
     }
 
@@ -95,20 +96,21 @@
     }
 
     .logout-btn svg {
-      width: 24px; /* Larger icon */
+      width: 24px;
       height: 24px;
     }
 
     /* Sidebar - Hide for staff */
-    .sidebar{ 
-      width: 250px; 
-      padding:18px; 
-      height: 100vh;
-      overflow-y: auto; /* Allow sidebar scrolling only */
+    .sidebar{
+      width: 130px;
+      padding:10px;
+      height: 100dvh;     /* ✅ */
+      overflow-y: auto;
       {% if role == 'staff' %}display: none !important;{% endif %}
     }
+
     .sidebar .shell{
-      height: calc(100vh - 36px);
+      height: calc(100dvh - 36px);  /* ✅ */
       border-radius: 22px;
       background: linear-gradient(180deg, rgba(17,24,39,.98), rgba(31,41,55,.96));
       box-shadow: var(--shadow2);
@@ -129,29 +131,42 @@
 
     /* Main content area */
     {% if role == 'staff' %}
-    .main{ 
-      flex:1; 
+    .main{
+      flex:1;
       padding: 18px 18px 28px;
-      margin-left: 0;
-      width: 100%;
-      height: 100vh;
-      /* overflow-y: auto; Allow main content scrolling only */
+      /* margin-left: 0;
+      width: 100%; */
+      height: 100dvh;          /* ✅ */
+      overflow-y: auto;        /* ✅ */
+      overscroll-behavior: contain;
     }
     {% else %}
-    .main{ 
-      flex:1; 
-      padding: 18px 18px 28px; 
-      height: 100vh;
-      /* overflow-y: auto; Allow main content scrolling only */
+    .main{
+      flex:1;
+      padding: 18px 18px 28px;
+      height: 100dvh;          /* ✅ */
+      overflow-y: auto;        /* ✅ */
+      overscroll-behavior: contain;
     }
     {% endif %}
 
     /* bigger working area */
-    .container{ 
-      max-width: 1800px; 
-      margin: 0 auto;
-      min-height: 100%;
+    .container{
+    max-width: 1800px;
+    margin: 0 auto;
+    height: 100%;                 /* ✅ */
+    display: flex;                /* ✅ */
+    flex-direction: column;       /* ✅ */
+    overflow: hidden;             /* ✅ */
     }
+  
+   .gridWrap{
+     margin-top: 20px;
+     margin-bottom: 0;             /* ✅ remove extra height */
+     flex: 1;                      /* ✅ take remaining space */
+     overflow: hidden;             /* ✅ */
+   }
+
 
     /* Top controls */
     .topbar{
@@ -159,18 +174,20 @@
       border: 1px solid rgba(229,231,235,1);
       border-radius: 22px;
       box-shadow: var(--shadow);
-      padding: 16px 20px; /* Slightly more padding */
+      padding: 16px 20px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap: 12px;
-      margin-top: 80px; /* More space for larger logout button */
+
+      /* ✅ Fix: remove desktop push-down that caused extra stretch */
+      margin-top: 0;
     }
 
     .leftPills{
       display:flex;
       align-items:center;
-      gap:12px; /* Slightly more gap */
+      gap:12px;
       flex-wrap: wrap;
     }
 
@@ -178,19 +195,19 @@
       display:inline-flex;
       align-items:center;
       gap:10px;
-      padding: 10px 14px; /* Slightly larger */
+      padding: 10px 14px;
       border-radius: 999px;
       border: 1px solid rgba(229,231,235,1);
       background: #fff;
-      font-size: 14px; /* Larger font */
+      font-size: 14px;
       font-weight: 900;
       box-shadow: 0 8px 20px rgba(15,23,42,.06);
       white-space: nowrap;
     }
 
     .dot{
-      width: 12px; /* Slightly larger */
-      height: 12px; 
+      width: 12px;
+      height: 12px;
       border-radius: 999px;
       background: var(--danger);
       box-shadow: 0 0 0 4px rgba(239,68,68,.16);
@@ -203,7 +220,7 @@
     .rightActions{
       display:flex;
       align-items:center;
-      gap: 12px; /* Slightly more gap */
+      gap: 12px;
       flex-wrap: wrap;
       justify-content:flex-end;
     }
@@ -212,11 +229,11 @@
       border: 1px solid rgba(229,231,235,1);
       background: #fff;
       color: var(--text);
-      padding: 12px 16px; /* Larger */
+      padding: 12px 16px;
       border-radius: 999px;
       cursor:pointer;
       font-weight: 900;
-      font-size: 14px; /* Larger */
+      font-size: 14px;
       transition: all .16s ease;
       display:inline-flex;
       align-items:center;
@@ -234,52 +251,44 @@
       box-shadow: 0 14px 34px rgba(79,70,229,.24);
     }
 
-    /* =========================
-       BIG CARDS GRID - ENHANCED FOR VISIBILITY
-       ========================= */
-    .gridWrap{ 
-      margin-top: 20px; 
+    .gridWrap{
+      margin-top: 20px;
       margin-bottom: 40px;
     }
 
     .grid{
       display:grid;
-      gap: 20px; /* Slightly larger gap */
+      gap: 20px;
       align-items: stretch;
-      /* default: auto adjust */
-      grid-template-columns: repeat(auto-fit, minmax(640px, 1fr)); /* Slightly larger min width */
+      grid-template-columns: repeat(auto-fit, minmax(640px, 1fr));
     }
 
-    /* 1 active call => TRUE BIG full area */
     .grid.one{
       grid-template-columns: 1fr;
       gap: 16px;
     }
 
-    /* 2 active calls => 2 big cards side-by-side */
     .grid.two{
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 18px;
     }
 
-    /* 3+ calls => still 2 columns but slightly tighter */
     .grid.many{
       grid-template-columns: repeat(2, minmax(580px, 1fr));
       gap: 16px;
     }
 
-    /* ===== Card + Ring animation ===== */
     .card{
       position:relative;
-      border-radius: 36px; /* More rounded */
+      border-radius: 36px;
       overflow: visible;
-      min-height: 400px; /* Flexible height */
+      min-height: 400px;
     }
 
     .cardInner{
-      background: rgba(255,255,255,.96); /* Slightly less transparent */
+      background: rgba(255,255,255,.96);
       border: 1px solid rgba(229,231,235,1);
-      border-radius: 36px; /* More rounded */
+      border-radius: 36px;
       box-shadow: var(--shadow2);
       overflow:hidden;
       display:flex;
@@ -290,16 +299,16 @@
       z-index: 2;
     }
 
-    /* Make cards fill available space */
+    /* ✅ Keep your design, but prevent page stretch by using dvh */
     .grid.one .card,
     .grid.one .cardInner{
-      min-height: calc(85vh - 120px);
+      min-height: calc(85dvh - 120px);
       height: auto;
     }
 
     .grid.two .card,
     .grid.two .cardInner{
-      min-height: calc(85vh - 120px);
+      min-height: calc(85dvh - 120px);
       height: auto;
     }
 
@@ -309,13 +318,12 @@
       height: auto;
     }
 
-    /* Rings: show "call is coming" */
     .card.ringing::before,
     .card.ringing::after{
       content:"";
       position:absolute;
       inset: -12px;
-      border-radius: 44px; /* Match new border-radius */
+      border-radius: 44px;
       border: 2px solid rgba(79,70,229,.0);
       opacity: 0;
       transform: scale(.985);
@@ -350,32 +358,31 @@
       .card.ringing::after{ animation:none; opacity:.25; transform:none; }
     }
 
-    /* Card header - ENHANCED VISIBILITY */
     .cardHead{
-      padding: 22px 24px; /* More padding */
+      padding: 22px 24px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap: 16px;
-      border-bottom: 2px solid rgba(229,231,235,1); /* Thicker border */
+      border-bottom: 2px solid rgba(229,231,235,1);
       background: rgba(248,250,252,.95);
     }
 
     .headLeft{
       display:flex;
       align-items:center;
-      gap: 16px; /* More gap */
+      gap: 16px;
       min-width:0;
     }
 
     .callIcon{
-      width: 52px; /* Larger */
+      width: 52px;
       height: 52px;
       border-radius: 20px;
       display:grid;
       place-items:center;
-      background: rgba(37,99,235,.12); /* Slightly darker */
-      border: 2px solid rgba(229,231,235,1); /* Thicker border */
+      background: rgba(37,99,235,.12);
+      border: 2px solid rgba(229,231,235,1);
       color: rgba(37,99,235,1);
       flex: 0 0 auto;
     }
@@ -383,15 +390,14 @@
     .hTitle{
       display:flex;
       flex-direction:column;
-      gap: 6px; /* More gap */
+      gap: 6px;
       min-width:0;
     }
 
-    /* ENHANCED FOR VISIBILITY FROM FAR */
     .hTitle .t1{
       margin:0;
-      font-weight: 1200; /* Heavier */
-      font-size: 32px; /* Much larger */
+      font-weight: 1200;
+      font-size: 32px;
       letter-spacing: -0.03em;
       white-space: nowrap;
       overflow:hidden;
@@ -402,7 +408,7 @@
     .hTitle .t2{
       margin:0;
       color: var(--muted);
-      font-size: 18px; /* Larger */
+      font-size: 18px;
       font-weight: 900;
       white-space: nowrap;
       overflow:hidden;
@@ -414,52 +420,50 @@
       display:inline-flex;
       align-items:center;
       gap: 10px;
-      padding: 12px 16px; /* Larger */
+      padding: 12px 16px;
       border-radius: 999px;
-      border: 2px solid rgba(229,231,235,1); /* Thicker border */
-      background: rgba(79,70,229,.10); /* Slightly darker */
+      border: 2px solid rgba(229,231,235,1);
+      background: rgba(79,70,229,.10);
       color: rgba(79,70,229,1);
-      font-size: 16px; /* Larger */
-      font-weight: 1200; /* Heavier */
+      font-size: 16px;
+      font-weight: 1200;
       white-space: nowrap;
       letter-spacing: 0.05em;
     }
     .badge .miniDot{
-      width: 10px; /* Larger */
-      height: 10px; 
+      width: 10px;
+      height: 10px;
       border-radius: 999px;
       background: rgba(79,70,229,1);
       box-shadow: 0 0 0 4px rgba(79,70,229,.12);
     }
 
-    /* Camera area */
     .camera{
-      margin: 18px 20px 0; /* More margin */
+      margin: 18px 20px 0;
       border-radius: 28px;
-      border: 2px solid rgba(229,231,235,1); /* Thicker border */
+      border: 2px solid rgba(229,231,235,1);
       background:
         radial-gradient(520px 300px at 50% 40%, rgba(15,23,42,.06), transparent 65%),
         linear-gradient(180deg, #fafafa, #ffffff);
       flex:1;
-      min-height: 300px; /* Reduced to make room for bigger text */
+      min-height: 300px;
       overflow:hidden;
       position:relative;
       display:grid;
       place-items:center;
     }
 
-    /* Adjust camera height based on grid mode */
-    .grid.one .camera{ 
-      min-height: 400px; 
-      flex: 1.5; /* Take more space in single view */
+    .grid.one .camera{
+      min-height: 400px;
+      flex: 1.5;
     }
 
-    .grid.two .camera{ 
-      min-height: 350px; 
+    .grid.two .camera{
+      min-height: 350px;
     }
 
-    .grid.many .camera{ 
-      min-height: 250px; 
+    .grid.many .camera{
+      min-height: 250px;
     }
 
     .camera img{
@@ -469,91 +473,86 @@
       display:block;
     }
 
-    .camIcon{ 
-      opacity:.55; 
-      width: 72px; /* Larger */
-      height: 72px; 
+    .camIcon{
+      opacity:.55;
+      width: 72px;
+      height: 72px;
     }
     .camPlaceholderText{
       margin-top: 12px;
-      font-size: 14px; /* Larger */
+      font-size: 14px;
       font-weight: 900;
       color: rgba(100,116,139,.9);
       text-align:center;
     }
 
-    /* ENHANCED META SECTION - BIGGER TEXT FOR VISIBILITY */
     .meta{
-      margin: 18px 20px 20px; /* More margin */
+      margin: 18px 20px 20px;
       border-radius: 28px;
-      border: 2px solid rgba(229,231,235,1); /* Thicker border */
+      border: 2px solid rgba(229,231,235,1);
       background: rgba(248,250,252,.96);
-      padding: 20px 24px; /* More padding */
+      padding: 20px 24px;
       display:grid;
       grid-template-columns: 1fr 1fr;
-      gap: 20px 24px; /* More gap */
+      gap: 20px 24px;
     }
 
     .metaItem {
       text-align: center;
       padding: 12px 0;
     }
-    
+
     .metaItem .k{
-      font-size: 14px; /* Larger */
+      font-size: 14px;
       font-weight: 1000;
-      letter-spacing: .1em; /* More spacing */
+      letter-spacing: .1em;
       color: rgba(100,116,139,.95);
       text-transform: uppercase;
-      margin-bottom: 12px; /* More space */
+      margin-bottom: 12px;
       display: block;
     }
-    
-    /* ENHANCED FOR VISIBILITY FROM FAR */
+
     .metaItem .v{
-      font-size: 36px; /* Much larger */
-      font-weight: 1200; /* Heavier */
+      font-size: 36px;
+      font-weight: 1200;
       color: var(--text);
       line-height: 1.2;
       text-shadow: 0 2px 4px rgba(0,0,0,0.05);
       letter-spacing: -0.02em;
     }
-    
-    /* Special styling for time */
+
     .metaItem .v.time-value {
-      color: var(--danger); /* Make time stand out */
-      font-weight: 1300;
-    }
-    
-    /* Special styling for status */
-    .metaItem .v.status-value {
-      color: var(--ok); /* Green for active status */
+      color: var(--danger);
       font-weight: 1300;
     }
 
-    /* Adjust for different grid modes */
+    .metaItem .v.status-value {
+      color: var(--ok);
+      font-weight: 1300;
+    }
+
     .grid.one .metaItem .k{ font-size: 15px; }
-    .grid.one .metaItem .v{ font-size: 42px; } /* Even larger in single view */
-    .grid.one .badge{ 
-      font-size: 18px; 
-      padding: 14px 18px; 
+    .grid.one .metaItem .v{ font-size: 42px; }
+    .grid.one .badge{
+      font-size: 18px;
+      padding: 14px 18px;
     }
 
     .grid.two .metaItem .k{ font-size: 13px; }
     .grid.two .metaItem .v{ font-size: 32px; }
-    .grid.two .badge{ 
-      font-size: 15px; 
-      padding: 11px 15px; 
+    .grid.two .badge{
+      font-size: 15px;
+      padding: 11px 15px;
     }
 
     .empty{
-      padding: 40px; /* More padding */
+      padding: 40px;
       text-align:center;
       color: var(--muted);
       font-weight: 1000;
-      font-size: 20px; /* Larger */
+      font-size: 20px;
       background: rgba(255,255,255,.88);
-      border: 2px dashed rgba(229,231,235,1); /* Thicker border */
+      border: 2px dashed rgba(229,231,235,1);
       border-radius: 28px;
       box-shadow: var(--shadow);
       display: flex;
@@ -562,7 +561,6 @@
       min-height: 200px;
     }
 
-    /* Responsive hide sidebar on small screens */
     @media (max-width: 1024px){
       .sidebar{ display:none; }
       .main{ padding: 14px; }
@@ -572,14 +570,12 @@
       .logout-btn {
         top: 16px;
         left: 16px;
+        bottom: auto;
         padding: 14px 24px;
         font-size: 16px;
       }
     }
 
-    /* =========================
-       FULLSCREEN BEHAVIOR
-       ========================= */
     body.fsMode{
       background: #f8fafc;
     }
@@ -587,39 +583,38 @@
     body.fsMode .main{ padding: 10px; }
     body.fsMode .container{ max-width: none; }
     body.fsMode .gridWrap{ margin-top: 0; }
-    
-    /* Fullscreen meta text even larger */
-    body.fsMode .metaItem .v {
-      font-size: 48px; /* Extra large in fullscreen */
-    }
-    
-    body.fsMode .hTitle .t1 {
-      font-size: 40px; /* Extra large in fullscreen */
-    }
 
-    /* Sidebar overlay drawer in fullscreen - Hide for staff */
+    body.fsMode .metaItem .v { font-size: 48px; }
+    body.fsMode .hTitle .t1 { font-size: 40px; }
+
+        /* Sidebar overlay drawer in fullscreen - Hide for staff */
     {% if role != 'staff' %}
     body.fsMode .sidebar{
       display:block;
       position: fixed;
       left: 0;
       top: 0;
-      height: 100vh;
-      width: 280px;
-      padding: 12px;
+      height: 200dvh;
+      width: 130px;
+    
+      padding: 6px;          /* ✅ reduce outer padding (was 12px) */
       z-index: 1200;
       pointer-events: none;
     }
+    
     body.fsMode .sidebar .shell{
-      height: calc(100vh - 24px);
-      transform: translateX(calc(-100% - 14px));
+      height: calc(125dvh - 280px);  /* ✅ match padding*2 (was 24px) */
+      border-radius: 22px;
+    
+      transform: translateX(calc(-100% - 6px)); /* ✅ match padding (was 14px) */
       transition: transform .22s ease;
       pointer-events: auto;
-      border-radius: 22px;
     }
+    
     body.fsMode.fsSidebarOpen .sidebar{ pointer-events: auto; }
-    body.fsMode.fsSidebarOpen .sidebar .shell{ transform: translateY(0); }
+    body.fsMode.fsSidebarOpen .sidebar .shell{ transform: translateX(0); }
     {% endif %}
+
 
     .fsBackdrop{
       position: fixed;
@@ -674,7 +669,6 @@
       box-shadow: 0 4px 0 rgba(15,23,42,.75), 0 8px 0 rgba(15,23,42,.75);
     }
 
-    /* Hide fullscreen sidebar controls for staff */
     {% if role == 'staff' %}
     #fs-backdrop,
     #fs-handle {
@@ -682,34 +676,34 @@
     }
     {% endif %}
 
-    /* Mobile adjustments */
     @media (max-width: 768px) {
       .logout-btn {
         top: 16px;
         left: 16px;
+        bottom: auto;
         padding: 14px 24px;
         font-size: 16px;
         min-width: 140px;
       }
-      
+
       .topbar {
-        margin-top: 70px;
+        margin-top: 70px; /* keep your mobile spacing */
         flex-wrap: wrap;
       }
-      
+
       .meta {
         grid-template-columns: 1fr;
         gap: 16px;
       }
-      
+
       .metaItem .v {
         font-size: 28px;
       }
-      
+
       .hTitle .t1 {
         font-size: 24px;
       }
-      
+
       .hTitle .t2 {
         font-size: 14px;
       }
@@ -719,25 +713,42 @@
       .logout-btn {
         top: 12px;
         left: 12px;
+        bottom: auto;
         padding: 12px 20px;
         font-size: 14px;
         min-width: 120px;
       }
-      
+
       .logout-btn svg {
         width: 18px;
         height: 18px;
       }
-      
+
       .topbar {
         margin-top: 60px;
         padding: 12px 16px;
       }
-      
+
       .metaItem .v {
         font-size: 24px;
       }
     }
+
+    /* Hide logout button in fullscreen until sidebar is opened */
+    body.fsMode .logout-btn{
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(6px);
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    
+    /* When fullscreen sidebar is open, show logout */
+    body.fsMode.fsSidebarOpen .logout-btn{
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
   </style>
 </head>
 
@@ -746,17 +757,16 @@
     <!-- Enhanced Logout Button - Shows for all roles -->
     <a href="/logout" class="logout-btn" title="Logout">
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17 16L21 12M21 12L17 8M21 12H9M13 16V17C13 18.6569 11.6569 20 10 20H6C4.34315 20 3 18.6569 3 17V7C3 5.34315 4.34315 4 6 4H10C11.6569 4 13 5.34315 13 7V8" 
+        <path d="M17 16L21 12M21 12L17 8M21 12H9M13 16V17C13 18.6569 11.6569 20 10 20H6C4.34315 20 3 18.6569 3 17V7C3 5.34315 4.34315 4 6 4H10C11.6569 4 13 5.34315 13 7V8"
               stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span>LOGOUT</span>
+      <span></span>
     </a>
 
     {% if role != 'staff' %}
     <aside class="sidebar">
       <div id="sidebar" class="shell">
         {% include "sidebar.html" %}
-        <!-- Note: Ensure sidebar.html doesn't have logout button -->
       </div>
     </aside>
     {% endif %}
@@ -913,7 +923,6 @@
           document.getElementById('fullscreen-text').textContent = on ? 'Exit Fullscreen' : 'Fullscreen';
         });
 
-        // keyboard shortcuts in fullscreen
         window.addEventListener('keydown', (e) => {
           if (e.key === 'm' || e.key === 'M') {
             if (document.fullscreenElement) this.toggleFsSidebar();
@@ -1006,7 +1015,6 @@
             e.bed_id != null
           );
 
-          // latest per bed
           const map = {};
           active.forEach(ev => {
             const bid = String(ev.bed_id);
@@ -1033,7 +1041,6 @@
         const grid = document.getElementById('active-grid');
         const activeCount = Object.keys(this.data.activeByBed || {}).length;
 
-        // ✅ layout mode classes for BIG cards
         grid.classList.toggle('one',  activeCount === 1);
         grid.classList.toggle('two',  activeCount === 2);
         grid.classList.toggle('many', activeCount >= 3);
