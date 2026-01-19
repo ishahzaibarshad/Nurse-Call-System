@@ -36,15 +36,18 @@
     .app { display:flex; min-height:100vh; width:100%; }
 
     /* ✅ Sidebar shell container (MATCH calls.html) */
-    .sidebar{ width: 250px; padding:18px; flex: 0 0 auto; }
+    /* ✅ Sidebar size + no scrollbar */
+    .sidebar{ width: 150px; padding:14px; flex: 0 0 auto; }
     .sidebar .shell{
-      height: calc(100vh - 36px);
+      
+      height: calc(100vh - 28px);
       border-radius: 22px;
       background: linear-gradient(180deg, rgba(17,24,39,.98), rgba(31,41,55,.96));
       box-shadow: var(--shadow2);
-      overflow:auto;
+      overflow: hidden;                 /* ✅ no sidebar scroll */
       border: 1px solid rgba(255,255,255,.08);
     }
+
     .sidebar .shell, .sidebar .shell * { color:#fff; }
 
     /* Active nav style */

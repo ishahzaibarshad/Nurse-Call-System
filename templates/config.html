@@ -38,15 +38,17 @@
     }
 
     .layout{ display:flex; min-height:100vh; width:100%; }
-    .sidebar{ width: 260px; padding: 18px; display:none; }
+    /* ✅ Sidebar size + no scrollbar */
+    .sidebar{ width: 150px; padding:14px; flex: 0 0 auto; }
     .sidebar .shell{
-      height: calc(100vh - 36px);
-      border: 1px solid rgba(255,255,255,.25);
-      border-radius: var(--radius);
-      background: rgba(15,23,42,.92);
+      height: calc(100vh - 28px);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(17,24,39,.98), rgba(31,41,55,.96));
       box-shadow: var(--shadow2);
-      overflow:auto;
+      overflow: hidden;                 /* ✅ no sidebar scroll */
+      border: 1px solid rgba(255,255,255,.08);
     }
+
     .sidebar .shell *{ color:#fff; }
     @media (min-width: 1024px){ .sidebar{ display:block; } }
 

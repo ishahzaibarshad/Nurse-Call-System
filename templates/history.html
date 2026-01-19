@@ -37,15 +37,17 @@
     }
 
     .layout{ display:flex; min-height:100vh; width:100%; }
-    .sidebar{ width:260px; padding:18px; display:none; }
+    /* ✅ Sidebar size + no scrollbar */
+    .sidebar{ width: 150px; padding:14px; flex: 0 0 auto; }
     .sidebar .shell{
-      height: calc(100vh - 36px);
-      border: 1px solid rgba(255,255,255,.25);
-      border-radius: var(--radius);
-      background: rgba(15,23,42,.92);
+      height: calc(100vh - 28px);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(17,24,39,.98), rgba(31,41,55,.96));
       box-shadow: var(--shadow2);
-      overflow:auto;
+      overflow: hidden;                 /* ✅ no sidebar scroll */
+      border: 1px solid rgba(255,255,255,.08);
     }
+
     .sidebar .shell *{ color:#fff; }
     @media (min-width: 1024px){ .sidebar{ display:block; } }
 
@@ -91,6 +93,35 @@
     }
     @media(max-width: 980px){ .filters{ grid-template-columns: 1fr 1fr; } }
     @media(max-width: 540px){ .filters{ grid-template-columns: 1fr; } }
+
+    .reportGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 10px;
+      align-items:end;
+    }
+    @media(max-width: 980px){ .reportGrid{ grid-template-columns: 1fr 1fr; } }
+    @media(max-width: 540px){ .reportGrid{ grid-template-columns: 1fr; } }
+
+    .statsGrid{
+      display:grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+    @media(max-width: 1100px){ .statsGrid{ grid-template-columns: repeat(3, 1fr); } }
+    @media(max-width: 720px){ .statsGrid{ grid-template-columns: repeat(2, 1fr); } }
+    @media(max-width: 440px){ .statsGrid{ grid-template-columns: 1fr; } }
+
+    .statCard{
+      background:#fff;
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: 16px;
+      padding: 12px 12px;
+      box-shadow: 0 10px 22px rgba(15,23,42,.06);
+    }
+    .statLabel{ font-size: 12px; color: var(--muted); font-weight: 800; }
+    .statValue{ font-size: 18px; font-weight: 900; margin-top: 6px; }
 
     .field label{
       display:block;
@@ -282,6 +313,18 @@
 
           <div class="actions">
             <input id="searchInput" class="input" style="max-width: 320px;" placeholder="Search sessions..." />
+
+            <button id="reportsBtn" class="btn btnGhost" type="button" title="Reports">
+              <svg class="icon" viewBox="0 0 24 24" fill="none">
+                <path d="M4 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M8 19V9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M12 19V12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M16 19V7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M20 19V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              Reports
+            </button>
+
             <button id="refreshBtn" class="btn btnPrimary" type="button">
               <svg class="icon" viewBox="0 0 24 24" fill="none">
                 <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -294,6 +337,121 @@
 
         <div id="toast"></div>
 
+        <!-- REPORTS PANEL (hidden by default) -->
+        <div class="card" id="reportsPanel" style="margin-bottom: 14px; display:none;">
+          <div class="cardHead">
+            <div>
+              <h3>Reports</h3>
+              <div class="sub">Filters: Time • Floor • Ward • Duration (minutes)</div>
+            </div>
+            <div class="actions">
+              <button id="reportClearBtn" class="btn" type="button">Clear</button>
+              <button id="reportRunBtn" class="btn btnPrimary" type="button">Run Report</button>
+            </div>
+          </div>
+          <div class="cardBody">
+
+            <div class="reportGrid">
+              <div class="field">
+                <label>From (Time)</label>
+                <input id="repFrom" class="input" type="datetime-local" />
+              </div>
+
+              <div class="field">
+                <label>To (Time)</label>
+                <input id="repTo" class="input" type="datetime-local" />
+              </div>
+
+              <div class="field">
+                <label>Floor (Report)</label>
+                <select id="repFloorSel">
+                  <option value="">All Floors</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Ward (Report)</label>
+                <select id="repWardSel">
+                  <option value="">All Wards</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Duration Operator</label>
+                <select id="repDurOp">
+                  <option value="">No Duration Filter</option>
+                  <option value="lt">Less than (&lt;)</option>
+                  <option value="lte">Less than or equal (&le;)</option>
+                  <option value="eq">Equal (=)</option>
+                  <option value="gte">Greater than or equal (&ge;)</option>
+                  <option value="gt">Greater than (&gt;)</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Duration Minutes</label>
+                <input id="repDurMin" class="input" type="number" min="0" step="0.1" placeholder="e.g. 2" />
+              </div>
+
+              <div class="field">
+                <label>Include Active Sessions?</label>
+                <select id="repIncludeActive">
+                  <option value="yes">Yes</option>
+                  <option value="no">No (Ended only)</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Apply Now</label>
+                <button id="repAutoBtn" class="btn btnGhost" type="button">Apply Filters</button>
+              </div>
+            </div>
+
+            <div class="statsGrid" id="reportStats" style="margin-top:14px;">
+              <div class="statCard">
+                <div class="statLabel">Total Calls</div>
+                <div class="statValue" id="stTotal">—</div>
+              </div>
+              <div class="statCard">
+                <div class="statLabel">Average Duration</div>
+                <div class="statValue" id="stAvgDur">—</div>
+              </div>
+              <div class="statCard">
+                <div class="statLabel">Average Calls / Day</div>
+                <div class="statValue" id="stAvgDay">—</div>
+              </div>
+              <div class="statCard">
+                <div class="statLabel">Min Duration</div>
+                <div class="statValue" id="stMinDur">—</div>
+              </div>
+              <div class="statCard">
+                <div class="statLabel">Max Duration</div>
+                <div class="statValue" id="stMaxDur">—</div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px;" class="tableWrap">
+              <table style="min-width: 900px;">
+                <thead>
+                  <tr>
+                    <th>Group</th>
+                    <th>Name</th>
+                    <th>Calls</th>
+                  </tr>
+                </thead>
+                <tbody id="repBreakdown">
+                  <tr><td colspan="3" class="empty"><strong>Run report</strong><div class="mutedSmall">Results will show here.</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mutedSmall" style="margin-top:10px;">
+              Note: Report uses loaded history dataset (events recent). If you want older history, increase the server limit or add date endpoint later.
+            </div>
+          </div>
+        </div>
+
+        <!-- EXISTING FILTERS -->
         <div class="card" style="margin-bottom: 14px;">
           <div class="cardHead">
             <div>
@@ -337,6 +495,7 @@
           </div>
         </div>
 
+        <!-- SESSIONS TABLE -->
         <div class="card">
           <div class="cardHead">
             <div>
@@ -424,7 +583,17 @@
     events: [],
     sessions: [],
     q: "",
-    filter: { floor:"", ward:"", room:"", limit:100 }
+    filter: { floor:"", ward:"", room:"", limit:100 },
+    report: {
+      open: false,
+      from: "",
+      to: "",
+      floor: "",
+      ward: "",
+      durOp: "",
+      durMin: "",
+      includeActive: "yes",
+    }
   };
 
   const $ = (id) => document.getElementById(id);
@@ -449,6 +618,14 @@
     if (s === "ended" || s === "cleared") return `<span class="badge bOff">${esc(s)}</span>`;
     if (s === "inactive") return `<span class="badge bOff">inactive</span>`;
     return `<span class="badge bWarn">${esc(status || "unknown")}</span>`;
+  }
+
+  // Support both snake_case + camelCase keys (because server.py uses camelCase)
+  function pick(obj, keys, fallback="") {
+    for (const k of keys) {
+      if (obj && obj[k] != null && obj[k] !== "") return obj[k];
+    }
+    return fallback;
   }
 
   function fmtTime(ts) {
@@ -481,8 +658,8 @@
   }
 
   function isEndEvent(ev){
-    const st = String(ev.status || "").toLowerCase();
-    const et = String(ev.event_type || ev.event || "").toLowerCase();
+    const st = String(pick(ev, ["status"], "")).toLowerCase();
+    const et = String(pick(ev, ["event_type","eventType","event"], "")).toLowerCase();
     return (st === "ended" || st === "cleared" || st === "inactive" || et === "reset" || et === "cancel");
   }
 
@@ -507,6 +684,7 @@
       buildFilters();
       buildSessions();
       render();
+      if (state.report.open) runReport(); // keep report updated
     } catch (e) {
       $("metaLine").textContent = "Error";
       $("sessionsBody").innerHTML = `
@@ -522,10 +700,11 @@
   }
 
   function buildFilters() {
-    const floors = uniq(state.events.map(e => e.floor_name));
-    const wards  = uniq(state.events.map(e => e.ward_name));
-    const rooms  = uniq(state.events.map(e => e.room_name));
+    const floors = uniq(state.events.map(e => pick(e, ["floor_name","floorName"], "")));
+    const wards  = uniq(state.events.map(e => pick(e, ["ward_name","wardName"], "")));
+    const rooms  = uniq(state.events.map(e => pick(e, ["room_name","roomName"], "")));
 
+    // Existing filters
     const floorSel = $("floorSel");
     const wardSel  = $("wardSel");
     const roomSel  = $("roomSel");
@@ -541,24 +720,48 @@
     floorSel.value = keepFloor || "";
     wardSel.value  = keepWard || "";
     roomSel.value  = keepRoom || "";
+
+    // Report filters (separate)
+    const repFloor = $("repFloorSel");
+    const repWard  = $("repWardSel");
+    const keepRF = repFloor.value;
+    const keepRW = repWard.value;
+
+    repFloor.innerHTML = `<option value="">All Floors</option>` + floors.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join("");
+    repWard.innerHTML  = `<option value="">All Wards</option>` + wards.map(w => `<option value="${esc(w)}">${esc(w)}</option>`).join("");
+
+    repFloor.value = keepRF || "";
+    repWard.value  = keepRW || "";
   }
 
   function buildSessions() {
     const byId = new Map();
 
     for (const ev of state.events) {
-      const sid = (ev.call_session_id != null) ? ("S" + ev.call_session_id) : ("E" + ev.id);
+      const callSessionId = pick(ev, ["call_session_id","callSessionId"], null);
+      const evId = pick(ev, ["id"], null);
+      const sid = (callSessionId != null) ? ("S" + callSessionId) : ("E" + evId);
+
+      const floor = pick(ev, ["floor_name","floorName"], "");
+      const ward  = pick(ev, ["ward_name","wardName"], "");
+      const room  = pick(ev, ["room_name","roomName"], "");
+      const bed   = pick(ev, ["bed_number","bedNumber","bed_name","bedName"], "");
+
+      const ts = pick(ev, ["system_timestamp","systemTimestamp"], "");
+      const evType = pick(ev, ["event_type","eventType","event"], "Unknown");
+      const st = pick(ev, ["status"], "unknown");
+
       if (!byId.has(sid)) {
         byId.set(sid, {
           sid,
-          call_session_id: ev.call_session_id,
-          room: ev.room_name || "",
-          ward: ev.ward_name || "",
-          floor: ev.floor_name || "",
-          bed: (ev.bed_number || ev.bed_name || ""),
+          call_session_id: callSessionId,
+          room,
+          ward,
+          floor,
+          bed,
           types: new Set(),
-          start_ts: ev.system_timestamp || "",
-          last_ts: ev.system_timestamp || "",
+          start_ts: ts,
+          last_ts: ts,
           end_ts: "",
           has_active: false,
           events: []
@@ -566,22 +769,19 @@
       }
 
       const s = byId.get(sid);
-      s.types.add(ev.event_type || ev.event || "Unknown");
+      s.types.add(evType);
       s.events.push(ev);
 
       // min(start), max(last)
-      if (String(ev.system_timestamp || "") < String(s.start_ts || "")) s.start_ts = ev.system_timestamp || s.start_ts;
-      if (String(ev.system_timestamp || "") > String(s.last_ts || "")) s.last_ts = ev.system_timestamp || s.last_ts;
+      if (String(ts || "") < String(s.start_ts || "")) s.start_ts = ts || s.start_ts;
+      if (String(ts || "") > String(s.last_ts || "")) s.last_ts = ts || s.last_ts;
 
-      // status heuristics
-      if (String(ev.status || "").toLowerCase() === "active") s.has_active = true;
+      if (String(st || "").toLowerCase() === "active") s.has_active = true;
       if (isEndEvent(ev)) {
-        // keep latest end time
-        if (!s.end_ts || String(ev.system_timestamp || "") > String(s.end_ts)) s.end_ts = ev.system_timestamp || s.end_ts;
+        if (!s.end_ts || String(ts || "") > String(s.end_ts)) s.end_ts = ts || s.end_ts;
       }
     }
 
-    // finalize status + duration
     const now = new Date();
     state.sessions = Array.from(byId.values()).map(s => {
       const startD = parseTs(s.start_ts);
@@ -596,13 +796,17 @@
       return {
         ...s,
         status,
+        durationMs: durMs,
         duration: fmtDuration(durMs),
+        startMs: startD ? startD.getTime() : null,
+        endMs: endD ? endD.getTime() : null,
+        lastMs: lastD ? lastD.getTime() : null,
         _sort: (lastD ? lastD.getTime() : 0)
       };
     }).sort((a,b) => b._sort - a._sort);
   }
 
-  function passesFilters(item) {
+  function passesBaseFilters(item) {
     if (state.filter.floor && item.floor !== state.filter.floor) return false;
     if (state.filter.ward && item.ward !== state.filter.ward) return false;
     if (state.filter.room && item.room !== state.filter.room) return false;
@@ -619,13 +823,13 @@
     return true;
   }
 
-  function getFilteredSessions() {
+  function getFilteredSessionsForTable() {
     const limit = Number(state.filter.limit || 100);
-    return state.sessions.filter(passesFilters).slice(0, limit);
+    return state.sessions.filter(passesBaseFilters).slice(0, limit);
   }
 
   function render() {
-    const sessions = getFilteredSessions();
+    const sessions = getFilteredSessionsForTable();
     $("countLine").textContent = `${sessions.length} session(s) showing`;
 
     if (!sessions.length) {
@@ -657,7 +861,136 @@
     `).join("");
   }
 
-  // Modal
+  // ---------------- REPORTS ----------------
+  function showReports(open) {
+    state.report.open = !!open;
+    $("reportsPanel").style.display = state.report.open ? "block" : "none";
+    if (state.report.open) runReport();
+  }
+
+  function clearReport() {
+    state.report = {
+      open: state.report.open,
+      from: "",
+      to: "",
+      floor: "",
+      ward: "",
+      durOp: "",
+      durMin: "",
+      includeActive: "yes",
+    };
+    $("repFrom").value = "";
+    $("repTo").value = "";
+    $("repFloorSel").value = "";
+    $("repWardSel").value = "";
+    $("repDurOp").value = "";
+    $("repDurMin").value = "";
+    $("repIncludeActive").value = "yes";
+    runReport();
+  }
+
+  function compareDuration(ms, op, minutes) {
+    if (!op) return true;
+    if (!isFinite(minutes)) return true;
+    const target = minutes * 60 * 1000;
+
+    if (ms == null || !isFinite(ms)) return false;
+
+    switch (op) {
+      case "lt":  return ms <  target;
+      case "lte": return ms <= target;
+      case "eq":  return Math.abs(ms - target) <= 1000; // allow 1 sec tolerance
+      case "gte": return ms >= target;
+      case "gt":  return ms >  target;
+      default:    return true;
+    }
+  }
+
+  function passesReportFilters(s) {
+    // include active?
+    const incActive = ($("repIncludeActive").value || "yes") === "yes";
+    if (!incActive && String(s.status).toLowerCase() !== "ended") return false;
+
+    // floor/ward
+    const rf = $("repFloorSel").value || "";
+    const rw = $("repWardSel").value || "";
+    if (rf && s.floor !== rf) return false;
+    if (rw && s.ward !== rw) return false;
+
+    // time range (by session start)
+    const fromVal = $("repFrom").value || "";
+    const toVal = $("repTo").value || "";
+    const fromMs = fromVal ? new Date(fromVal).getTime() : null;
+    const toMs = toVal ? new Date(toVal).getTime() : null;
+
+    if (fromMs && (!s.startMs || s.startMs < fromMs)) return false;
+    if (toMs && (!s.startMs || s.startMs > toMs)) return false;
+
+    // duration operator
+    const op = $("repDurOp").value || "";
+    const min = Number($("repDurMin").value || "");
+    if (!compareDuration(s.durationMs, op, min)) return false;
+
+    return true;
+  }
+
+  function runReport() {
+    // base filter + report filter (report does NOT use table limit)
+    const rows = state.sessions
+      .filter(passesBaseFilters)
+      .filter(passesReportFilters);
+
+    const total = rows.length;
+
+    // durations only (valid)
+    const durs = rows.map(x => x.durationMs).filter(ms => ms != null && isFinite(ms) && ms >= 0);
+
+    const sum = durs.reduce((a,b)=>a+b,0);
+    const avg = durs.length ? (sum / durs.length) : null;
+    const min = durs.length ? Math.min(...durs) : null;
+    const max = durs.length ? Math.max(...durs) : null;
+
+    // avg calls/day in selected time window (from/to), else based on earliest/latest in data
+    let fromMs = $("repFrom").value ? new Date($("repFrom").value).getTime() : null;
+    let toMs   = $("repTo").value ? new Date($("repTo").value).getTime() : null;
+
+    if (!fromMs || !toMs) {
+      const starts = rows.map(r => r.startMs).filter(Boolean);
+      if (!fromMs && starts.length) fromMs = Math.min(...starts);
+      if (!toMs && starts.length) toMs = Math.max(...starts);
+    }
+    const daySpan = (fromMs && toMs && toMs >= fromMs) ? Math.max(1, (toMs - fromMs) / (24*60*60*1000)) : 1;
+    const avgDay = total / daySpan;
+
+    $("stTotal").textContent = String(total);
+    $("stAvgDur").textContent = avg != null ? fmtDuration(avg) : "—";
+    $("stAvgDay").textContent = (isFinite(avgDay) ? avgDay.toFixed(2) : "—");
+    $("stMinDur").textContent = min != null ? fmtDuration(min) : "—";
+    $("stMaxDur").textContent = max != null ? fmtDuration(max) : "—";
+
+    // breakdown
+    const floorCount = new Map();
+    const wardCount = new Map();
+
+    for (const s of rows) {
+      const f = s.floor || "—";
+      const w = s.ward || "—";
+      floorCount.set(f, (floorCount.get(f) || 0) + 1);
+      wardCount.set(w, (wardCount.get(w) || 0) + 1);
+    }
+
+    const topFloors = Array.from(floorCount.entries()).sort((a,b)=>b[1]-a[1]).slice(0, 10);
+    const topWards  = Array.from(wardCount.entries()).sort((a,b)=>b[1]-a[1]).slice(0, 10);
+
+    const rowsHtml = []
+      .concat(topFloors.map(([name,c]) => `<tr><td>Floor</td><td><strong>${esc(name)}</strong></td><td>${c}</td></tr>`))
+      .concat(topWards.map(([name,c])  => `<tr><td>Ward</td><td><strong>${esc(name)}</strong></td><td>${c}</td></tr>`))
+      .join("");
+
+    $("repBreakdown").innerHTML = rowsHtml || `<tr><td colspan="3" class="empty"><strong>No results</strong><div class="mutedSmall">Change report filters and try again.</div></td></tr>`;
+  }
+
+  // ---------------- Modal ----------------
   const modalWrap = $("modalWrap");
   $("modalClose").addEventListener("click", () => modalWrap.style.display = "none");
   modalWrap.addEventListener("click", (e) => { if (e.target === modalWrap) modalWrap.style.display = "none"; });
@@ -676,17 +1009,21 @@
       <span class="pill">${esc(s.duration || "—")}</span>
     `;
 
-    const rows = (s.events || []).slice().sort((a,b)=>String(b.system_timestamp||"").localeCompare(String(a.system_timestamp||"")));
+    const rows = (s.events || []).slice().sort((a,b)=>String(pick(b,["system_timestamp","systemTimestamp"],"")).localeCompare(String(pick(a,["system_timestamp","systemTimestamp"],""))));
     $("modalEvents").innerHTML = rows.map(e => `
       <tr>
-        <td>${esc(fmtTime(e.system_timestamp))}</td>
-        <td><strong>${esc(e.event_type || e.event || "Unknown")}</strong></td>
-        <td>${esc(e.floor_name || "-")}</td>
-        <td>${esc(e.ward_name || "-")}</td>
-        <td>${esc(e.room_name || "-")}</td>
-        <td>${esc(e.bed_number || e.bed_name || "-")}</td>
-        <td>${badge(e.status || "unknown")}</td>
-        <td>${e.camera_available ? `<a href="${esc(e.camera_url || "#")}" target="_blank">Open</a>` : "-"}</td>
+        <td>${esc(fmtTime(pick(e,["system_timestamp","systemTimestamp"],"")))}</td>
+        <td><strong>${esc(pick(e,["event_type","eventType","event"],"Unknown"))}</strong></td>
+        <td>${esc(pick(e,["floor_name","floorName"],"-"))}</td>
+        <td>${esc(pick(e,["ward_name","wardName"],"-"))}</td>
+        <td>${esc(pick(e,["room_name","roomName"],"-"))}</td>
+        <td>${esc(pick(e,["bed_number","bedNumber","bed_name","bedName"],"-"))}</td>
+        <td>${badge(pick(e,["status"],"unknown"))}</td>
+        <td>${
+          (pick(e,["cameraAvailable","camera_available"],false))
+            ? `<a href="${esc(pick(e,["cameraUrl","camera_url"],"#"))}" target="_blank">Open</a>`
+            : "-"
+        }</td>
       </tr>
     `).join("") || `<tr><td colspan="8" class="empty"><strong>No events in this session</strong></td></tr>`;
 
@@ -699,12 +1036,25 @@
     if (b.dataset.action === "details") openDetails(b.dataset.sid);
   });
 
-  // Filters + search
-  $("searchInput").addEventListener("input", (e) => { state.q = e.target.value || ""; render(); });
-  $("floorSel").addEventListener("change", (e) => { state.filter.floor = e.target.value || ""; render(); });
-  $("wardSel").addEventListener("change", (e) => { state.filter.ward  = e.target.value || ""; render(); });
-  $("roomSel").addEventListener("change", (e) => { state.filter.room  = e.target.value || ""; render(); });
+  // ---------------- UI Events ----------------
+
+  $("reportsBtn").addEventListener("click", () => showReports(!state.report.open));
+  $("reportRunBtn").addEventListener("click", runReport);
+  $("repAutoBtn").addEventListener("click", runReport);
+  $("reportClearBtn").addEventListener("click", clearReport);
+
+  // existing filters + search
+  $("searchInput").addEventListener("input", (e) => { state.q = e.target.value || ""; render(); if (state.report.open) runReport(); });
+  $("floorSel").addEventListener("change", (e) => { state.filter.floor = e.target.value || ""; render(); if (state.report.open) runReport(); });
+  $("wardSel").addEventListener("change", (e) => { state.filter.ward  = e.target.value || ""; render(); if (state.report.open) runReport(); });
+  $("roomSel").addEventListener("change", (e) => { state.filter.room  = e.target.value || ""; render(); if (state.report.open) runReport(); });
   $("limitSel").addEventListener("change", (e) => { state.filter.limit = Number(e.target.value || 100); render(); });
+
+  // report inputs (optional auto-update)
+  ["repFrom","repTo","repFloorSel","repWardSel","repDurOp","repDurMin","repIncludeActive"].forEach(id=>{
+    $(id).addEventListener("change", ()=> { if (state.report.open) runReport(); });
+    $(id).addEventListener("input", ()=> { if (state.report.open) runReport(); });
+  });
 
   $("refreshBtn").addEventListener("click", async () => {
     toast("Refreshing…");
