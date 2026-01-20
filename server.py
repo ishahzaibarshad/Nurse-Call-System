@@ -51,8 +51,9 @@ engine = get_db_engine(
     Config.DB_SOCKET if Config.DB_USE_SOCKET else None
 )
 
-SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root@localhost/hospital_monitor"
-user_engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SQLALCHEMY_DATABASE_URL = Config.DATABASE_URL
+user_engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+
 UserSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=user_engine)
 
 Base = declarative_base()
