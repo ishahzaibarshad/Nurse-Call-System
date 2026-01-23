@@ -1,145 +1,235 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <style>
-        /* Define the theme colors */
-        :root {
-            --primary-color: #4f46e5;  /* Blue from the screenshot */
-            --secondary-color: #6366f1;  /* Lighter blue for buttons, accents */
-            --background-color: #f3f4f6;  /* Light background */
-            --card-color: #ffffff;  /* White background for the card */
-            --text-color: #0f172a;  /* Dark text color */
-            --input-border-color: #d1d5db;  /* Light gray border for inputs */
-            --button-color: #6366f1;  /* Button color */
-            --button-hover-color: #4f46e5;  /* Button hover color */
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nurse Call System | Login</title>
 
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            background-color: var(--background-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            padding: 20px;
-        }
+  <style>
+    :root{
+      --bg: #f5f7fb;         /* dashboard-like background */
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e5e7eb;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --danger: #ef4444;
 
-        .login-container {
-            background-color: var(--card-color);
-            padding: 2em;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    }
 
-        h2 {
-            color: var(--primary-color);
-            margin-bottom: 30px;
-            font-size: 24px;
-            font-weight: bold;
-        }
+    *{ box-sizing:border-box; }
 
-        label {
-            font-size: 14px;
-            color: var(--text-color);
-            margin-bottom: 5px;
-            display: block;
-            text-align: left;
-            width: 100%;
-        }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
 
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0 20px;
-            border: 1px solid var(--input-border-color);
-            border-radius: 8px;
-            font-size: 16px;
-            color: var(--text-color);
-            outline: none;
-            transition: border 0.3s;
-        }
+    /* subtle top highlight */
+    .bg-glow{
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(700px 300px at 50% 0%, rgba(79,70,229,.10), transparent 60%);
+    }
 
-        input[type="text"]:focus, input[type="password"]:focus {
-            border-color: var(--primary-color);
-        }
+    .wrap{
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 1;
+    }
 
-        button {
-            width: 100%;
-            padding: 14px;
-            background-color: var(--button-color);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            margin-top: 20px;
-        }
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 26px;
+    }
 
-        button:hover {
-            background-color: var(--button-hover-color);
-        }
+    .brand{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      text-align:center;
+      margin-bottom: 18px;
+    }
 
-        .form-group {
-            width: 100%;
-            margin-bottom: 20px;
-            display: flex;
-            flex-direction: column;
-        }
+    /* BIG logo */
+    .logo{
+      width: 96px;
+      height: 96px;
+      object-fit: contain;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid rgba(229,231,235,.9);
+      padding: 10px;
+      box-shadow: 0 12px 25px rgba(15,23,42,.08);
+      margin-bottom: 12px;
+    }
 
-        .error-message {
-            color: #ef4444;
-            font-weight: 700;
-            margin-top: 12px;
-        }
+    .brand h1{
+      margin: 0;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: .2px;
+    }
 
-        /* Additional styling for mobile responsiveness */
-        @media (max-width: 600px) {
-            .login-container {
-                padding: 20px;
-            }
+    .brand p{
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
 
-            h2 {
-                font-size: 20px;
-            }
+    .title{
+      margin: 8px 0 6px;
+      font-size: 18px;
+      font-weight: 900;
+    }
 
-            button {
-                font-size: 14px;
-            }
-        }
-    </style>
+    .subtitle{
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .field{
+      margin-top: 14px;
+    }
+
+    label{
+      display:block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #111827;
+    }
+
+    input[type="text"],
+    input[type="password"]{
+      width:100%;
+      height: 46px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0 12px;
+      font-size: 15px;
+      outline:none;
+      background: #ffffff;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus{
+      border-color: rgba(79,70,229,.55);
+      box-shadow: 0 0 0 5px rgba(79,70,229,.12);
+    }
+
+    .row{
+      margin-top: 12px;
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      user-select:none;
+    }
+
+    .row input{
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+    }
+
+    .error{
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(239,68,68,.25);
+      background: rgba(239,68,68,.08);
+      color: #b91c1c;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    button{
+      margin-top: 16px;
+      width:100%;
+      height: 48px;
+      border: none;
+      border-radius: 12px;
+      background: var(--primary);
+      color:#fff;
+      font-size: 15px;
+      font-weight: 900;
+      cursor:pointer;
+      box-shadow: 0 14px 28px rgba(79,70,229,.18);
+      transition: background .2s, transform .08s ease;
+    }
+
+    button:hover{ background: var(--primary-hover); }
+    button:active{ transform: translateY(1px); }
+
+    .footer{
+      margin-top: 14px;
+      text-align:center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+  </style>
 </head>
+
 <body>
+  <div class="bg-glow"></div>
 
-    <div class="login-container">
-        <h2>Login</h2>
-        <form method="post">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
-            </div>
+  <div class="wrap">
+    <div class="card">
+      <div class="brand">
+        <!-- Put your logo in: static/logo.png -->
+        <img class="logo" src="/static/logo.png" alt="Nurse Call System Logo" />
+        <h1>Nurse Call System</h1>
+        <p>Secure staff login to access the dashboard</p>
+      </div>
 
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
-            </div>
+      <div class="title">Login</div>
+      <div class="subtitle">Enter your username and password to continue.</div>
 
-            <!-- Error message display -->
-            {% if error %}
-                <p class="error-message">{{ error }}</p>
-            {% endif %}
+      <form method="post">
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" autocomplete="username" required />
+        </div>
 
-            <button type="submit">Login</button>
-        </form>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required />
+        </div>
+
+        <div class="row">
+          <input type="checkbox" id="remember" name="remember" />
+          <label for="remember" style="margin:0; font-weight:700; color: var(--muted);">Remember me</label>
+        </div>
+
+        {% if error %}
+          <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <button type="submit">Sign in</button>
+      </form>
+
+      <div class="footer">© Nurse Call System</div>
     </div>
-
+  </div>
 </body>
 </html>

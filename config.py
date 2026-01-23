@@ -1,33 +1,58 @@
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
-from urllib.parse import quote_plus
 
 load_dotenv()
 
+
+def project_root() -> Path:
+    """
+    Returns project root (one level above this file) for normal python runs.
+    If running as PyInstaller EXE, returns folder of the .exe.
+    """
+    if getattr(sys, "frozen", False) and hasattr(sys, "executable"):
+        return Path(sys.executable).resolve().parent
+    # config.py is usually inside project root; if yours is inside a subfolder,
+    # change .parent to .parent.parent accordingly.
+    return Path(__file__).resolve().parent
+
+
 class Config:
-    # ---------- DB ----------
-    DB_HOST = os.getenv("DB_HOST", "127.0.0.1")   # use 127.0.0.1 for TCP
+    # ---------- DB (SQLite Offline) ----------
+    # .env overrides:
+    # SQLITE_FILENAME=hospital_monitor.db
+    # SQLITE_PATH=/absolute/path/to/hospital_monitor.db
+    SQLITE_FILENAME = os.getenv("SQLITE_FILENAME", "hospital_monitor.db")
+    SQLITE_PATH = os.getenv("SQLITE_PATH", "").strip()
+
+    if SQLITE_PATH:
+        DB_PATH = Path(SQLITE_PATH).expanduser().resolve()
+    else:
+        # Put DB inside a dedicated writable folder (recommended)
+        data_dir = (project_root() / "data").resolve()
+        data_dir.mkdir(parents=True, exist_ok=True)
+        DB_PATH = (data_dir / SQLITE_FILENAME).resolve()
+
+    # SQLAlchemy SQLite URL
+    # Use as_posix() for linux paths. Absolute path => sqlite:////abs/path
+    DATABASE_URL = f"sqlite:///{DB_PATH.as_posix()}"
+
+    # ---------- Optional debug print (helps find wrong DB path) ----------
+    print(f"[Config] Using SQLite DB: {DB_PATH}")
+
+    # Keep legacy MySQL settings for compatibility (not used in SQLite)
+    DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
     DB_PORT = int(os.getenv("DB_PORT", "3306"))
     DB_USER = os.getenv("DB_USER", "root")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "")
     DB_NAME = os.getenv("DB_NAME", "hospital_monitor")
-
-    # XAMPP socket
     DB_SOCKET = os.getenv("DB_SOCKET", "/opt/lampp/var/mysql/mysql.sock")
-
-    # 1 = use socket (best for XAMPP), 0 = use TCP
-    DB_USE_SOCKET = os.getenv("DB_USE_SOCKET", "1") == "1"
-
-    _pwd = quote_plus(DB_PASSWORD or "")
-    if DB_USE_SOCKET:
-        _sock = quote_plus(DB_SOCKET)
-        DATABASE_URL = f"mysql+pymysql://{DB_USER}:{_pwd}@localhost/{DB_NAME}?unix_socket={_sock}&charset=utf8mb4"
-    else:
-        DATABASE_URL = f"mysql+pymysql://{DB_USER}:{_pwd}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
+    DB_USE_SOCKET = False  # ✅ SQLite mode
 
     # ---------- UDP ----------
     UDP_IP = os.getenv("UDP_IP", "0.0.0.0")
-    UDP_PORT = int(os.getenv("UDP_PORT", "6345"))  # set default to what your server log shows
+    UDP_PORT = int(os.getenv("UDP_PORT", "6345"))
 
     # ---------- SERVER ----------
     SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")
@@ -35,25 +60,15 @@ class Config:
 
     # ---------- TIMEZONE ----------
     TIMEZONE = "Asia/Karachi"
-        # ---------- BED -> INTERCOM DEFAULT MAPPING ----------
-    # room_name (DB) ke basis par bed_name + intercom_ip auto set ho jayega
+
+    # ---------- BED -> INTERCOM DEFAULT MAPPING ----------
     DEFAULT_BED_INTERCOM_SETUP = [
-        {
-            "room_name": "G1 RES RN2",
-            "bed_name": "G1 RES RN 02",
-            "intercom_ip": "192.168.1.11",
-        },
-        {
-            "room_name": "VIP ROOM 1",
-            "bed_name": "VIP ROOM 01",
-            "intercom_ip": "192.168.1.12",
-        },
+        {"room_name": "G1 RES RN2", "bed_name": "G1 RES RN 02", "intercom_ip": "192.168.1.11"},
+        {"room_name": "VIP ROOM 1", "bed_name": "VIP ROOM 01", "intercom_ip": "192.168.1.12"},
     ]
-        # Room/system IP -> Intercom IP mapping
-    # (Room name kuch bhi ho, system_ip stable hota hai)
+
+    # ---------- Room/system IP -> Intercom IP mapping ----------
     INTERCOM_IP_BY_ROOM_SYSTEM_IP = {
         "192.168.1.11": "192.168.1.11",
         "192.168.1.12": "192.168.1.12",
     }
-
-

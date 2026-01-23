@@ -1,9 +1,9 @@
+# server.py
 
 import os
 import socket
 import asyncio
 import json
-import re
 import time
 import base64
 from contextlib import asynccontextmanager
@@ -12,24 +12,19 @@ from urllib.parse import quote
 from typing import Optional, Any, Dict
 
 import uvicorn
-import pymysql
-from sqlalchemy import inspect, func, text
-from sqlalchemy.orm import joinedload
+import bcrypt
 from fastapi import (
     FastAPI, WebSocket, WebSocketDisconnect, Request,
-    HTTPException, status, Form, Depends
+    Form, Depends
 )
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from passlib.context import CryptContext
 from starlette.middleware.sessions import SessionMiddleware
 
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, func, text
+from sqlalchemy.orm import Session, sessionmaker, declarative_base, joinedload
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from decoder import decode_l7700_packet
@@ -37,59 +32,68 @@ from camera_stream import CameraManager
 from config import Config
 from models import (
     get_db_engine, get_db_session, init_database,
-    Floor, Department, Wing, Ward, Room, Bed, Camera, Event as EventModel, ColorScheme, CallSession,
+    Floor, Department, Wing, Ward, Room, Bed, Camera,
+    Event as EventModel, ColorScheme, CallSession,
     get_karachi_time
 )
 
-
 # ----------------- Globals -----------------
 
-SECRET_KEY = "your-secret-key-change-this-in-production"
+SECRET_KEY = os.getenv("NCS_SECRET_KEY", "your-secret-key-change-this-in-production")
 
 engine = get_db_engine(
     Config.DATABASE_URL,
-    Config.DB_SOCKET if Config.DB_USE_SOCKET else None
+    Config.DB_SOCKET if getattr(Config, "DB_USE_SOCKET", False) else None
 )
 
-SQLALCHEMY_DATABASE_URL = Config.DATABASE_URL
-user_engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+UserSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-UserSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=user_engine)
+# Separate Base for auth users table (keeps your models.py Base untouched)
+UserBase = declarative_base()
 
-Base = declarative_base()
 
-class User(Base):
+class User(UserBase):
     __tablename__ = "users"
-
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     password_hash = Column(String)
     role = Column(String)
 
-Base.metadata.create_all(bind=user_engine)
+
+UserBase.metadata.create_all(bind=engine)
 
 camera_manager = CameraManager(use_simulation=False)
 active_connections: Dict[int, WebSocket] = {}
 
 templates = Jinja2Templates(directory="templates")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# ----------------- Password helpers (bcrypt only) -----------------
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+    except Exception:
+        return False
+
+
+def is_bcrypt_hash(s: str) -> bool:
+    return isinstance(s, str) and (s.startswith("$2a$") or s.startswith("$2b$") or s.startswith("$2y$"))
+
 
 # ----------------- Helpers -----------------
 
 def _s(v) -> str:
     return (v or "").strip()
 
-def _norm(s: str) -> str:
-    if not s:
-        return ""
-    return "".join(ch for ch in s.upper() if ch.isalnum())
 
 def _room_key(name: str) -> str:
     return (name or "").strip()
 
-def _set_if_attr(obj, key: str, value: Any):
-    if hasattr(obj, key):
-        setattr(obj, key, value)
 
 def now_karachi_naive() -> datetime:
     try:
@@ -97,194 +101,43 @@ def now_karachi_naive() -> datetime:
     except Exception:
         return datetime.now()
 
-def ensure_column_safe(table: str, col: str, ddl: str):
-    try:
-        inspector = inspect(engine)
-        cols = [c["name"] for c in inspector.get_columns(table)]
-        if col not in cols:
-            with engine.begin() as conn:
-                conn.execute(text(f"ALTER TABLE `{table}` ADD COLUMN {ddl}"))
-            print(f"[DB] Added column {table}.{col}")
-    except Exception as e:
-        print(f"[DB] ensure_column_safe warning: {e}")
 
-def ensure_table_safe(create_sql: str, table_name: str):
-    """
-    Create table if not exists, safe for repeated runs.
-    """
-    try:
-        inspector = inspect(engine)
-        tables = inspector.get_table_names()
-        if table_name not in tables:
-            with engine.begin() as conn:
-                conn.execute(text(create_sql))
-            print(f"[DB] Created table '{table_name}'")
-    except Exception as e:
-        print(f"[DB] ensure_table_safe warning for '{table_name}': {e}")
+# ----------------- DB init (FIX for your startup error) -----------------
 
 def init_database_tables():
+    """
+    FIX: your code called init_database_tables(), but it didn't exist.
+    Your models.py has init_database(engine), so we wrap it here.
+    """
+    init_database(engine)
+
+
+def ensure_default_admin():
+    """
+    Helps when you can't login because there are no users in DB.
+    Creates a default admin only if users table is empty.
+
+    You can change defaults with env:
+      NCS_DEFAULT_ADMIN_USER, NCS_DEFAULT_ADMIN_PASS
+    """
+    default_user = os.getenv("NCS_DEFAULT_ADMIN_USER", "admin")
+    default_pass = os.getenv("NCS_DEFAULT_ADMIN_PASS", "admin123")
+
+    db = UserSessionLocal()
     try:
-        print(f"[DB] Using DB: {Config.DB_NAME}")
-        if Config.DB_USE_SOCKET:
-            print(f"[DB] Using MySQL socket: {Config.DB_SOCKET}")
-            connection = pymysql.connect(
-                unix_socket=Config.DB_SOCKET,
-                user=Config.DB_USER,
-                password=Config.DB_PASSWORD,
-                charset="utf8mb4",
+        any_user = db.query(User).first()
+        if not any_user:
+            admin = User(
+                username=default_user,
+                password_hash=hash_password(default_pass),
+                role="admin"
             )
-        else:
-            print(f"[DB] Using TCP: {Config.DB_HOST}:{Config.DB_PORT}")
-            connection = pymysql.connect(
-                host=Config.DB_HOST,
-                port=Config.DB_PORT,
-                user=Config.DB_USER,
-                password=Config.DB_PASSWORD,
-                charset="utf8mb4",
-            )
+            db.add(admin)
+            db.commit()
+            print(f"✓ Created default admin: {default_user} / {default_pass}")
+    finally:
+        db.close()
 
-        cursor = connection.cursor()
-        cursor.execute(
-            f"CREATE DATABASE IF NOT EXISTS `{Config.DB_NAME}` "
-            "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-        )
-        cursor.close()
-        connection.close()
-
-        init_database(engine)
-        print("[DB] Database and tables initialized successfully")
-
-        # Existing
-        ensure_column_safe("beds", "intercom_ip", "`intercom_ip` VARCHAR(50) NULL")
-
-        # ✅ NEW: Departments & Wings tables (no ORM changes needed)
-        ensure_table_safe(
-            """
-            CREATE TABLE IF NOT EXISTS `departments` (
-              `id` INT NOT NULL AUTO_INCREMENT,
-              `name` VARCHAR(120) NOT NULL,
-              `floor_id` INT NOT NULL,
-              `description` VARCHAR(255) NULL,
-              `status` VARCHAR(20) NOT NULL DEFAULT 'active',
-              `created_at` DATETIME NULL,
-              `updated_at` DATETIME NULL,
-              PRIMARY KEY (`id`),
-              INDEX `idx_departments_floor` (`floor_id`),
-              INDEX `idx_departments_status` (`status`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-            """,
-            "departments"
-        )
-
-        ensure_table_safe(
-            """
-            CREATE TABLE IF NOT EXISTS `wings` (
-              `id` INT NOT NULL AUTO_INCREMENT,
-              `name` VARCHAR(120) NOT NULL,
-              `department_id` INT NOT NULL,
-              `description` VARCHAR(255) NULL,
-              `status` VARCHAR(20) NOT NULL DEFAULT 'active',
-              `created_at` DATETIME NULL,
-              `updated_at` DATETIME NULL,
-              PRIMARY KEY (`id`),
-              INDEX `idx_wings_department` (`department_id`),
-              INDEX `idx_wings_status` (`status`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-            """,
-            "wings"
-        )
-
-        # ✅ Optional (for future hierarchy): add nullable department_id and wing_id to wards table.
-        # This does NOT break your existing system if not used.
-        ensure_column_safe("wards", "department_id", "`department_id` INT NULL")
-        ensure_column_safe("wards", "wing_id", "`wing_id` INT NULL")
-
-        inspector = inspect(engine)
-        tables = inspector.get_table_names()
-        print(f"[DB] Tables: {', '.join(tables)}")
-
-    except Exception as e:
-        print(f"[DB] Error initializing database: {e}")
-        raise
-
-# ----------------- Bed resolving (multi-bed safe) -----------------
-
-def resolve_bed_by_ip(session, incoming_ip: str) -> Optional[Bed]:
-    ip = _s(incoming_ip)
-    if not ip:
-        return None
-    return (
-        session.query(Bed)
-        .options(joinedload(Bed.room))
-        .filter(Bed.intercom_ip == ip)
-        .order_by(Bed.id.asc())
-        .first()
-    )
-
-def resolve_bed_in_room(session, room: Room, decoded: dict) -> Optional[Bed]:
-    if not room:
-        return None
-
-    beds = session.query(Bed).filter(Bed.room_id == room.id).all()
-    if not beds:
-        return None
-
-    tokens = []
-    for key in ("bed_name", "bed", "room_name", "room", "device"):
-        v = _s(decoded.get(key))
-        if v and v not in tokens:
-            tokens.append(v)
-
-    for t in tokens:
-        tl = t.lower()
-        for b in beds:
-            if _s(getattr(b, "bed_number", "")).lower() == tl:
-                return b
-            if _s(getattr(b, "bed_name", "")).lower() == tl:
-                return b
-
-    ntokens = [_norm(t) for t in tokens if t]
-    for b in beds:
-        bn = _norm(_s(getattr(b, "bed_number", "")))
-        bname = _norm(_s(getattr(b, "bed_name", "")))
-        for nt in ntokens:
-            if not nt:
-                continue
-            if (nt in bname) or (nt in bn) or (bname and bname in nt) or (bn and bn in nt):
-                return b
-
-    joined = " ".join(tokens)
-    nums = re.findall(r"\b\d+\b", joined)
-    if nums:
-        for n in nums:
-            for b in beds:
-                if _s(getattr(b, "bed_number", "")) == n:
-                    return b
-
-    return sorted(beds, key=lambda x: x.id)[0]
-
-# ----------------- CallSession helper -----------------
-
-def get_or_create_call_session(session, bed_id, event_type):
-    cs = (
-        session.query(CallSession)
-        .filter(CallSession.bed_id == bed_id, CallSession.status == "active")
-        .first()
-    )
-
-    if cs:
-        cs.current_event_type = event_type
-        session.commit()
-        return cs
-
-    cs = CallSession(
-        bed_id=bed_id,
-        current_event_type=event_type,
-        status="active"
-    )
-    session.add(cs)
-    session.commit()
-    return cs
 
 # ----------------- Authentication Helpers -----------------
 
@@ -295,6 +148,7 @@ def get_user_db():
     finally:
         db.close()
 
+
 def get_current_user(request: Request):
     username = request.session.get("username")
     role = request.session.get("role")
@@ -302,29 +156,116 @@ def get_current_user(request: Request):
         return None
     return {"username": username, "role": role}
 
-def check_password_hash(stored_password, provided_password):
-    try:
-        return pwd_context.verify(provided_password, stored_password)
-    except Exception as e:
-        print(f"Error verifying password: {e}")
-        return False
+
+def check_password_hash(stored_password: str, provided_password: str) -> bool:
+    return verify_password(provided_password, stored_password or "")
+
 
 def rehash_passwords():
+    """
+    Rehash ONLY if someone stored plaintext by mistake.
+    Existing bcrypt hashes remain unchanged.
+    """
     db = UserSessionLocal()
     try:
         users = db.query(User).all()
+        changed = False
         for user in users:
-            if not pwd_context.identify(user.password_hash):
-                print(f"Rehashing password for user {user.username}")
-                hashed_password = pwd_context.hash(user.password_hash)
-                user.password_hash = hashed_password
-                db.commit()
+            if user.password_hash and not is_bcrypt_hash(user.password_hash):
+                print(f"Rehashing plaintext password for user {user.username}")
+                user.password_hash = hash_password(user.password_hash)
+                changed = True
+        if changed:
+            db.commit()
     finally:
         db.close()
 
+
+# ----------------- CallSession / Bed resolve helpers -----------------
+
+def resolve_bed_by_ip(session: Session, ip: str) -> Optional[Bed]:
+    ip = _s(ip)
+    if not ip:
+        return None
+    return session.query(Bed).options(joinedload(Bed.room)).filter(Bed.intercom_ip == ip).first()
+
+
+def resolve_bed_in_room(session: Session, room: Room, decoded: dict) -> Optional[Bed]:
+    if not room:
+        return None
+
+    # Try bed_number first
+    bed_number = _s(
+        decoded.get("bed_number")
+        or decoded.get("bedNumber")
+        or decoded.get("bed")
+        or decoded.get("bed_no")
+        or decoded.get("bedNo")
+    )
+
+    if bed_number:
+        b = (
+            session.query(Bed)
+            .options(joinedload(Bed.room))
+            .filter(Bed.room_id == room.id, func.lower(Bed.bed_number) == bed_number.lower())
+            .first()
+        )
+        if b:
+            return b
+
+    # Then try bed_name
+    bed_name = _s(decoded.get("bed_name") or decoded.get("bedName") or decoded.get("label"))
+    if bed_name:
+        b = (
+            session.query(Bed)
+            .options(joinedload(Bed.room))
+            .filter(Bed.room_id == room.id, func.lower(Bed.bed_name) == bed_name.lower())
+            .first()
+        )
+        if b:
+            return b
+
+    return None
+
+
+def get_or_create_call_session(session: Session, bed_id: int, event_type: str) -> CallSession:
+    """
+    models.py CallSession fields:
+      - bed_id
+      - current_event_type
+      - started_at
+      - ended_at
+      - status
+      - created_at
+    """
+    cs = session.query(CallSession).filter(
+        CallSession.bed_id == bed_id,
+        CallSession.status == "active"
+    ).first()
+
+    if cs:
+        # keep current_event_type updated
+        cs.current_event_type = event_type or cs.current_event_type
+        session.commit()
+        session.refresh(cs)
+        return cs
+
+    cs = CallSession(
+        bed_id=bed_id,
+        current_event_type=event_type or "Unknown",
+        started_at=now_karachi_naive(),
+        status="active",
+        created_at=now_karachi_naive(),
+    )
+    session.add(cs)
+    session.commit()
+    session.refresh(cs)
+    return cs
+
+
 # ----------------- Cameras / Serialization -----------------
 
-def get_room_camera(session, room: Room):
+def get_room_camera(session: Session, room: Room) -> Optional[Camera]:
     if not room:
         return None
     return (
@@ -334,6 +275,7 @@ def get_room_camera(session, room: Room):
         .first()
     )
 
+
 def _stream_key_for_event(bed: Optional[Bed], room: Optional[Room]) -> str:
     if bed and _s(bed.bed_name):
         return _room_key(bed.bed_name)
@@ -341,7 +283,8 @@ def _stream_key_for_event(bed: Optional[Bed], room: Optional[Room]) -> str:
         return _room_key(room.room_name)
     return ""
 
-def serialize_event_with_camera(session, event: EventModel):
+
+def serialize_event_with_camera(session: Session, event: EventModel) -> dict:
     bed = event.bed
     room = event.room or (bed.room if bed else None)
     ward = room.ward if room else None
@@ -385,6 +328,7 @@ def serialize_event_with_camera(session, event: EventModel):
         "intercomIp": getattr(bed, "intercom_ip", None) if bed else None,
     }
 
+
 def mjpeg_generator(stream_key: str, fps: int = 10):
     stream_key = _room_key(stream_key)
     frame_delay = 1.0 / max(1, int(fps))
@@ -412,6 +356,7 @@ def mjpeg_generator(stream_key: str, fps: int = 10):
             payload + b"\r\n"
         )
 
+
 _PLACEHOLDER_JPEG = base64.b64decode(
     "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a"
     "HBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIy"
@@ -420,13 +365,16 @@ _PLACEHOLDER_JPEG = base64.b64decode(
     "AAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCVAAB//2Q=="
 )
 
+
 # ----------------- Lifespan -----------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_database_tables()
     rehash_passwords()
+    ensure_default_admin()
 
+    # Start cameras for beds that have camera_id + active camera
     session = get_db_session(engine)
     try:
         beds = (
@@ -455,7 +403,9 @@ async def lifespan(app: FastAPI):
     yield
     camera_manager.shutdown()
 
+
 # ----------------- Create FastAPI app with lifespan -----------------
+
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
@@ -468,15 +418,18 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+
 # ----------------- Authentication Routes -----------------
 
 @app.get("/", include_in_schema=False)
 async def root():
     return RedirectResponse(url="/login")
 
+
 @app.get("/login")
 async def get_login(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
+
 
 @app.post("/login")
 async def login(
@@ -493,17 +446,24 @@ async def login(
 
         if user.role == "admin":
             return RedirectResponse(url="/dashboard", status_code=303)
-        elif user.role == "staff":
+        if user.role == "staff":
             return RedirectResponse(url="/calls", status_code=303)
-        elif user.role == "user":
+        if user.role == "user":
             return RedirectResponse(url="/user_calls", status_code=303)
-        else:
-            return RedirectResponse(url="/login", status_code=303)
-    else:
-        return templates.TemplateResponse(
-            "login.html",
-            {"request": request, "error": "Invalid credentials"}
-        )
+
+        return RedirectResponse(url="/login", status_code=303)
+
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "error": "Invalid credentials"}
+    )
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login")
+
 
 # ----------------- Role-Specific Page Routes -----------------
 
@@ -516,7 +476,7 @@ async def admin_dashboard(request: Request):
     if user["role"] != "admin":
         if user["role"] == "staff":
             return RedirectResponse(url="/calls")
-        elif user["role"] == "user":
+        if user["role"] == "user":
             return RedirectResponse(url="/user_calls")
 
     return templates.TemplateResponse(
@@ -524,8 +484,9 @@ async def admin_dashboard(request: Request):
         {"request": request, "user": user, "show_sidebar": True}
     )
 
+
 @app.get("/calls", response_class=HTMLResponse)
-async def admin_calls_page(request: Request):
+async def calls_page(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login")
@@ -540,8 +501,9 @@ async def admin_calls_page(request: Request):
         {"request": request, "user": user, "show_sidebar": show_sidebar}
     )
 
+
 @app.get("/user_calls", response_class=HTMLResponse)
-async def admin_user_calls_page(request: Request):
+async def user_calls_page(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/login")
@@ -556,6 +518,7 @@ async def admin_user_calls_page(request: Request):
         {"request": request, "user": user, "show_sidebar": show_sidebar}
     )
 
+
 @app.get("/history", response_class=HTMLResponse)
 async def history_page(request: Request):
     user = get_current_user(request)
@@ -565,13 +528,14 @@ async def history_page(request: Request):
     if user["role"] != "admin":
         if user["role"] == "staff":
             return RedirectResponse(url="/calls")
-        elif user["role"] == "user":
+        if user["role"] == "user":
             return RedirectResponse(url="/user_calls")
 
     return templates.TemplateResponse(
         "history.html",
         {"request": request, "user": user, "show_sidebar": True}
     )
+
 
 @app.get("/config", response_class=HTMLResponse)
 async def config_page(request: Request):
@@ -582,7 +546,7 @@ async def config_page(request: Request):
     if user["role"] != "admin":
         if user["role"] == "staff":
             return RedirectResponse(url="/calls")
-        elif user["role"] == "user":
+        if user["role"] == "user":
             return RedirectResponse(url="/user_calls")
 
     return templates.TemplateResponse(
@@ -590,19 +554,17 @@ async def config_page(request: Request):
         {"request": request, "user": user, "show_sidebar": True}
     )
 
+
 @app.get("/sidebar.html", response_class=HTMLResponse, include_in_schema=False)
 async def sidebar_partial(request: Request):
     user = get_current_user(request)
     return templates.TemplateResponse("sidebar.html", {"request": request, "user": user})
 
+
 @app.get("/templates/sidebar.html", response_class=HTMLResponse, include_in_schema=False)
 async def sidebar_partial_alias(request: Request):
     return await sidebar_partial(request)
 
-@app.get("/logout")
-async def logout(request: Request):
-    request.session.clear()
-    return RedirectResponse(url="/login")
 
 # ----------------- Camera Streams -----------------
 
@@ -612,6 +574,7 @@ async def camera_by_key(key: str):
 
     session = get_db_session(engine)
     try:
+        # Try bed by name/number first
         bed = (
             session.query(Bed)
             .options(joinedload(Bed.camera), joinedload(Bed.room))
@@ -639,6 +602,7 @@ async def camera_by_key(key: str):
                 headers={"Cache-Control": "no-store", "Pragma": "no-cache", "X-Accel-Buffering": "no"}
             )
 
+        # Then try room
         room = (
             session.query(Room)
             .filter(
@@ -671,6 +635,7 @@ async def camera_by_key(key: str):
         )
     finally:
         session.close()
+
 
 # ----------------- APIs -----------------
 
@@ -713,6 +678,7 @@ async def get_stats():
     finally:
         session.close()
 
+
 @app.get("/api/events/recent")
 async def get_recent_events(limit: int = 100):
     session = get_db_session(engine)
@@ -731,6 +697,7 @@ async def get_recent_events(limit: int = 100):
     finally:
         session.close()
 
+
 @app.get("/api/calls")
 async def api_calls(limit: int = 100, only_active: bool = True):
     session = get_db_session(engine)
@@ -743,7 +710,6 @@ async def api_calls(limit: int = 100, only_active: bool = True):
             )
             .order_by(EventModel.id.desc())
         )
-
         if only_active:
             q = q.filter(EventModel.status == "active")
 
@@ -751,6 +717,7 @@ async def api_calls(limit: int = 100, only_active: bool = True):
         return [serialize_event_with_camera(session, e) for e in events]
     finally:
         session.close()
+
 
 @app.get("/api/timeline")
 async def api_timeline(days: int = 7):
@@ -783,6 +750,7 @@ async def api_timeline(days: int = 7):
     finally:
         session.close()
 
+
 # ----------------- Config GET endpoints -----------------
 
 @app.get("/api/config/floors")
@@ -793,16 +761,7 @@ async def get_floors():
         out = []
         for f in floors:
             wards_count = session.query(func.count(Ward.id)).filter(Ward.floor_id == f.id).scalar() or 0
-            # ✅ NEW count
-            dept_count = 0
-            try:
-                dept_count = session.execute(
-                    text("SELECT COUNT(*) FROM departments WHERE floor_id=:fid"),
-                    {"fid": f.id}
-                ).scalar() or 0
-            except Exception:
-                dept_count = 0
-
+            dept_count = session.query(func.count(Department.id)).filter(Department.floor_id == f.id).scalar() or 0
             out.append({
                 "id": f.id,
                 "name": f.name,
@@ -816,107 +775,64 @@ async def get_floors():
     finally:
         session.close()
 
+
 @app.get("/api/config/departments")
 async def get_departments():
     session = get_db_session(engine)
     try:
-        rows = session.execute(
-            text("""
-                SELECT d.id, d.name, d.floor_id, d.description, d.status
-                FROM departments d
-                ORDER BY d.id ASC
-            """)
-        ).mappings().all()
-
+        depts = session.query(Department).order_by(Department.id.asc()).all()
         out = []
-        for r in rows:
-            wing_count = 0
-            try:
-                wing_count = session.execute(
-                    text("SELECT COUNT(*) FROM wings WHERE department_id=:did"),
-                    {"did": r["id"]}
-                ).scalar() or 0
-            except Exception:
-                wing_count = 0
-
+        for d in depts:
+            wing_count = session.query(func.count(Wing.id)).filter(Wing.department_id == d.id).scalar() or 0
             out.append({
-                "id": r["id"],
-                "name": r["name"],
-                "floorId": r["floor_id"],
-                "description": r["description"],
-                "status": r["status"],
+                "id": d.id,
+                "name": d.name,
+                "floorId": d.floor_id,
+                "description": d.description,
+                "status": d.status,
                 "wings": int(wing_count),
             })
-
         return {"departments": out}
     finally:
         session.close()
+
 
 @app.get("/api/config/wings")
 async def get_wings():
     session = get_db_session(engine)
     try:
-        rows = session.execute(
-            text("""
-                SELECT w.id, w.name, w.department_id, w.description, w.status
-                FROM wings w
-                ORDER BY w.id ASC
-            """)
-        ).mappings().all()
-
+        wings = session.query(Wing).order_by(Wing.id.asc()).all()
         out = []
-        for r in rows:
-            ward_count = 0
-            try:
-                ward_count = session.execute(
-                    text("SELECT COUNT(*) FROM wards WHERE wing_id=:wid"),
-                    {"wid": r["id"]}
-                ).scalar() or 0
-            except Exception:
-                ward_count = 0
-
+        for w in wings:
+            ward_count = session.query(func.count(Ward.id)).filter(Ward.wing_id == w.id).scalar() or 0
             out.append({
-                "id": r["id"],
-                "name": r["name"],
-                "departmentId": r["department_id"],
-                "description": r["description"],
-                "status": r["status"],
+                "id": w.id,
+                "name": w.name,
+                "departmentId": w.department_id,
+                "description": w.description,
+                "status": w.status,
                 "wards": int(ward_count),
             })
-
         return {"wings": out}
     finally:
         session.close()
+
 
 @app.get("/api/config/wards")
 async def get_wards():
     session = get_db_session(engine)
     try:
-        wards = session.query(Ward).order_by(Ward.id.asc()).all()
+        wards = session.query(Ward).options(joinedload(Ward.wing)).order_by(Ward.id.asc()).all()
         out = []
         for w in wards:
             rooms_count = session.query(func.count(Room.id)).filter(Room.ward_id == w.id).scalar() or 0
-
-            # ✅ Read optional columns if present (from DB), without changing ORM
-            dep_id = None
-            wing_id = None
-            try:
-                row = session.execute(
-                    text("SELECT department_id, wing_id FROM wards WHERE id=:id"),
-                    {"id": w.id}
-                ).mappings().first()
-                if row:
-                    dep_id = row.get("department_id")
-                    wing_id = row.get("wing_id")
-            except Exception:
-                pass
-
+            department_id = w.wing.department_id if w.wing else None
             out.append({
                 "id": w.id,
                 "name": w.name,
                 "floorId": w.floor_id,
-                "departmentId": dep_id,
-                "wingId": wing_id,
+                "departmentId": department_id,
+                "wingId": w.wing_id,
                 "wardType": w.ward_type,
                 "description": w.description,
                 "status": w.status,
@@ -926,6 +842,7 @@ async def get_wards():
     finally:
         session.close()
 
+
 @app.get("/api/config/rooms")
 async def get_rooms():
     session = get_db_session(engine)
@@ -933,14 +850,15 @@ async def get_rooms():
         rooms = session.query(Room).all()
         return {"rooms": [{
             "id": r.id,
+            "wardId": r.ward_id,
             "roomName": r.room_name,
             "roomNumber": r.room_number,
-            "wardId": r.ward_id,
             "systemIp": r.system_ip,
             "status": r.status,
         } for r in rooms]}
     finally:
         session.close()
+
 
 @app.get("/api/config/beds")
 async def get_beds():
@@ -955,10 +873,11 @@ async def get_beds():
             "bedNumber": b.bed_number,
             "cameraId": b.camera_id,
             "status": b.status,
-            "ipAddress": getattr(b, "intercom_ip", None),
+            "ipAddress": b.intercom_ip,
         } for b in beds]}
     finally:
         session.close()
+
 
 @app.get("/api/config/colors")
 async def get_colors():
@@ -973,63 +892,69 @@ async def get_colors():
     finally:
         session.close()
 
-# ----------------- Config CRUD endpoints -----------------
+
+# ----------------- Config CRUD models -----------------
 
 class FloorUpsert(BaseModel):
-    name: Optional[str] = Field(default=None, alias="name")
-    floor_number: Optional[int] = Field(default=None, alias="floor_number")
+    name: Optional[str] = None
+    floor_number: Optional[int] = None
     description: Optional[str] = None
     status: Optional[str] = None
+
 
 class DepartmentUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    name: Optional[str] = Field(default=None, alias="name")
-    floor_id: Optional[int] = Field(default=None, alias="floor_id")
+    name: Optional[str] = None
+    floor_id: Optional[int] = None
     description: Optional[str] = None
     status: Optional[str] = None
+
 
 class WingUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    name: Optional[str] = Field(default=None, alias="name")
-    department_id: Optional[int] = Field(default=None, alias="department_id")
+    name: Optional[str] = None
+    department_id: Optional[int] = None
     description: Optional[str] = None
     status: Optional[str] = None
+
 
 class WardUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    name: Optional[str] = Field(default=None, alias="name")
-    floor_id: Optional[int] = Field(default=None, alias="floor_id")
-    # ✅ new optional mapping fields
-    department_id: Optional[int] = Field(default=None, alias="department_id")
-    wing_id: Optional[int] = Field(default=None, alias="wing_id")
-    ward_type: Optional[str] = Field(default=None, alias="ward_type")
+    name: Optional[str] = None
+    floor_id: Optional[int] = None
+    wing_id: Optional[int] = None
+    ward_type: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
 
+
 class RoomUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    ward_id: Optional[int] = Field(default=None, alias="ward_id")
-    room_name: Optional[str] = Field(default=None, alias="room_name")
-    room_number: Optional[str] = Field(default=None, alias="room_number")
-    system_ip: Optional[str] = Field(default=None, alias="system_ip")
+    ward_id: Optional[int] = None
+    room_name: Optional[str] = None
+    room_number: Optional[str] = None
+    system_ip: Optional[str] = None
     status: Optional[str] = None
+
 
 class BedUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    room_id: Optional[int] = Field(default=None, alias="room_id")
-    room: Optional[Any] = Field(default=None, alias="room")
-    bed_name: Optional[str] = Field(default=None, alias="bed_name")
-    bed_number: Optional[str] = Field(default=None, alias="bed_number")
-    camera_id: Optional[int] = Field(default=None, alias="camera_id")
-    status: Optional[str] = Field(default=None, alias="status")
-    ip_address: Optional[str] = Field(default=None, alias="ip_address")
+    room_id: Optional[int] = None
+    room: Optional[Any] = None
+    bed_name: Optional[str] = None
+    bed_number: Optional[str] = None
+    camera_id: Optional[int] = None
+    status: Optional[str] = None
+    ip_address: Optional[str] = None
+
 
 class ColorUpsert(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    event_type: Optional[str] = Field(default=None, alias="event_type")
-    color: Optional[str] = Field(default=None, alias="color")
+    event_type: Optional[str] = None
+    color: Optional[str] = None
 
-def _resolve_room_id_for_bed(session, payload: BedUpsert) -> Optional[int]:
+
+def _resolve_room_id_for_bed(session: Session, payload: BedUpsert) -> Optional[int]:
     if payload.room_id:
         return int(payload.room_id)
 
@@ -1040,7 +965,6 @@ def _resolve_room_id_for_bed(session, payload: BedUpsert) -> Optional[int]:
             rname = payload.room.strip()
             if rname.isdigit():
                 return int(rname)
-
             r = session.query(Room).filter(
                 (func.lower(Room.room_name) == rname.lower()) |
                 (func.lower(Room.room_number) == rname.lower())
@@ -1050,24 +974,8 @@ def _resolve_room_id_for_bed(session, payload: BedUpsert) -> Optional[int]:
 
     return None
 
-def _bed_ip(payload: BedUpsert) -> Optional[str]:
-    v = _s(payload.ip_address)
-    return v or None
 
-def _bed_out(b: Bed, room: Optional[Room] = None) -> dict:
-    rn = room.room_name if room else None
-    return {
-        "id": b.id,
-        "roomId": b.room_id,
-        "roomName": rn,
-        "bedName": b.bed_name,
-        "bedNumber": b.bed_number,
-        "cameraId": b.camera_id,
-        "status": b.status,
-        "ipAddress": getattr(b, "intercom_ip", None),
-    }
-
-def _ensure_intercom_ip_unique(session, ip: str, ignore_bed_id: Optional[int] = None) -> Optional[str]:
+def _ensure_intercom_ip_unique(session: Session, ip: str, ignore_bed_id: Optional[int] = None) -> Optional[str]:
     ip = _s(ip)
     if not ip:
         return None
@@ -1079,31 +987,27 @@ def _ensure_intercom_ip_unique(session, ip: str, ignore_bed_id: Optional[int] = 
         return f"intercom ip '{ip}' already used by bed id={exists.id}"
     return None
 
-def _last_insert_id(session) -> int:
-    try:
-        return int(session.execute(text("SELECT LAST_INSERT_ID()")).scalar() or 0)
-    except Exception:
-        return 0
 
-# ---------- Floors CRUD ----------
+# ----------------- Config CRUD endpoints -----------------
+
+# Floors
 @app.post("/api/config/floors")
 @app.put("/api/config/floors")
 async def create_floor(payload: FloorUpsert):
     session = get_db_session(engine)
     try:
-        data = payload.model_dump(exclude_unset=True)
-
-        if not _s(data.get("name")):
+        if not _s(payload.name):
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "name is required"}, status_code=422)
-        if data.get("floor_number") is None:
+        if payload.floor_number is None:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "floor_number is required"}, status_code=422)
 
-        f = Floor()
-        f.name = _s(data.get("name"))
-        f.floor_number = int(data.get("floor_number"))
-        f.description = data.get("description")
-        f.status = data.get("status") or "active"
-
+        f = Floor(
+            name=_s(payload.name),
+            floor_number=int(payload.floor_number),
+            description=payload.description,
+            status=payload.status or "active",
+            created_at=now_karachi_naive()
+        )
         session.add(f)
         session.commit()
         session.refresh(f)
@@ -1117,6 +1021,7 @@ async def create_floor(payload: FloorUpsert):
     finally:
         session.close()
 
+
 @app.put("/api/config/floors/{floor_id}")
 @app.patch("/api/config/floors/{floor_id}")
 @app.post("/api/config/floors/{floor_id}")
@@ -1127,15 +1032,14 @@ async def update_floor(floor_id: int, payload: FloorUpsert):
         if not f:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Floor not found"}, status_code=404)
 
-        data = payload.model_dump(exclude_unset=True)
-        if "name" in data:
-            f.name = _s(data.get("name"))
-        if "floor_number" in data and data.get("floor_number") is not None:
-            f.floor_number = int(data.get("floor_number"))
-        if "description" in data:
-            f.description = data.get("description")
-        if "status" in data:
-            f.status = data.get("status") or f.status
+        if payload.name is not None:
+            f.name = _s(payload.name)
+        if payload.floor_number is not None:
+            f.floor_number = int(payload.floor_number)
+        if payload.description is not None:
+            f.description = payload.description
+        if payload.status is not None:
+            f.status = payload.status or f.status
 
         session.commit()
         session.refresh(f)
@@ -1148,6 +1052,7 @@ async def update_floor(floor_id: int, payload: FloorUpsert):
         return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
     finally:
         session.close()
+
 
 @app.delete("/api/config/floors/{floor_id}")
 async def delete_floor(floor_id: int):
@@ -1165,107 +1070,73 @@ async def delete_floor(floor_id: int):
     finally:
         session.close()
 
-# ---------- Departments CRUD ----------
+
+# Departments
 @app.post("/api/config/departments")
 @app.put("/api/config/departments")
 async def create_department(payload: DepartmentUpsert):
     session = get_db_session(engine)
     try:
-        data = payload.model_dump(exclude_unset=True)
-        name = _s(data.get("name"))
-        floor_id = data.get("floor_id")
-
+        name = _s(payload.name)
         if not name:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "name is required"}, status_code=422)
-        if floor_id is None:
+        if payload.floor_id is None:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "floor_id is required"}, status_code=422)
 
-        # validate floor exists
-        f = session.query(Floor).filter(Floor.id == int(floor_id)).first()
+        f = session.query(Floor).filter(Floor.id == int(payload.floor_id)).first()
         if not f:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "floor_id not found"}, status_code=404)
 
-        session.execute(
-            text("""
-                INSERT INTO departments (name, floor_id, description, status, created_at)
-                VALUES (:name, :floor_id, :description, :status, :created_at)
-            """),
-            {
-                "name": name,
-                "floor_id": int(floor_id),
-                "description": data.get("description"),
-                "status": data.get("status") or "active",
-                "created_at": now_karachi_naive(),
-            }
+        d = Department(
+            name=name,
+            floor_id=int(payload.floor_id),
+            description=payload.description,
+            status=payload.status or "active",
+            created_at=now_karachi_naive()
         )
+        session.add(d)
         session.commit()
-        new_id = _last_insert_id(session)
-
-        row = session.execute(
-            text("SELECT id, name, floor_id, description, status FROM departments WHERE id=:id"),
-            {"id": new_id}
-        ).mappings().first()
+        session.refresh(d)
 
         return {"ok": True, "success": True, "status": "success", "message": "Department created", "department": {
-            "id": row["id"], "name": row["name"], "floorId": row["floor_id"],
-            "description": row["description"], "status": row["status"]
+            "id": d.id, "name": d.name, "floorId": d.floor_id,
+            "description": d.description, "status": d.status
         }}
     except Exception as e:
         session.rollback()
         return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
     finally:
         session.close()
+
 
 @app.put("/api/config/departments/{department_id}")
 @app.patch("/api/config/departments/{department_id}")
 async def update_department(department_id: int, payload: DepartmentUpsert):
     session = get_db_session(engine)
     try:
-        exists = session.execute(
-            text("SELECT id FROM departments WHERE id=:id"),
-            {"id": department_id}
-        ).scalar()
-
-        if not exists:
+        d = session.query(Department).filter(Department.id == department_id).first()
+        if not d:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Department not found"}, status_code=404)
 
-        data = payload.model_dump(exclude_unset=True)
-
-        if "floor_id" in data and data.get("floor_id") is not None:
-            f = session.query(Floor).filter(Floor.id == int(data["floor_id"])).first()
+        if payload.floor_id is not None:
+            f = session.query(Floor).filter(Floor.id == int(payload.floor_id)).first()
             if not f:
                 return JSONResponse({"ok": False, "success": False, "status": "error", "error": "floor_id not found"}, status_code=404)
+            d.floor_id = int(payload.floor_id)
 
-        session.execute(
-            text("""
-                UPDATE departments
-                SET
-                  name = COALESCE(:name, name),
-                  floor_id = COALESCE(:floor_id, floor_id),
-                  description = COALESCE(:description, description),
-                  status = COALESCE(:status, status),
-                  updated_at = :updated_at
-                WHERE id = :id
-            """),
-            {
-                "id": department_id,
-                "name": _s(data.get("name")) if "name" in data else None,
-                "floor_id": int(data["floor_id"]) if "floor_id" in data and data.get("floor_id") is not None else None,
-                "description": data.get("description") if "description" in data else None,
-                "status": data.get("status") if "status" in data else None,
-                "updated_at": now_karachi_naive(),
-            }
-        )
+        if payload.name is not None:
+            d.name = _s(payload.name)
+        if payload.description is not None:
+            d.description = payload.description
+        if payload.status is not None:
+            d.status = payload.status or d.status
+
         session.commit()
-
-        row = session.execute(
-            text("SELECT id, name, floor_id, description, status FROM departments WHERE id=:id"),
-            {"id": department_id}
-        ).mappings().first()
+        session.refresh(d)
 
         return {"ok": True, "success": True, "status": "success", "message": "Department saved", "department": {
-            "id": row["id"], "name": row["name"], "floorId": row["floor_id"],
-            "description": row["description"], "status": row["status"]
+            "id": d.id, "name": d.name, "floorId": d.floor_id,
+            "description": d.description, "status": d.status
         }}
     except Exception as e:
         session.rollback()
@@ -1273,29 +1144,23 @@ async def update_department(department_id: int, payload: DepartmentUpsert):
     finally:
         session.close()
 
+
 @app.delete("/api/config/departments/{department_id}")
 async def delete_department(department_id: int):
     session = get_db_session(engine)
     try:
-        exists = session.execute(
-            text("SELECT id FROM departments WHERE id=:id"),
-            {"id": department_id}
-        ).scalar()
-        if not exists:
+        d = session.query(Department).filter(Department.id == department_id).first()
+        if not d:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Department not found"}, status_code=404)
 
-        # Optional safety: prevent delete if wings exist
-        wing_cnt = session.execute(
-            text("SELECT COUNT(*) FROM wings WHERE department_id=:id"),
-            {"id": department_id}
-        ).scalar() or 0
+        wing_cnt = session.query(func.count(Wing.id)).filter(Wing.department_id == department_id).scalar() or 0
         if int(wing_cnt) > 0:
             return JSONResponse(
                 {"ok": False, "success": False, "status": "error", "error": "Cannot delete department: wings exist"},
                 status_code=400
             )
 
-        session.execute(text("DELETE FROM departments WHERE id=:id"), {"id": department_id})
+        session.delete(d)
         session.commit()
         return {"ok": True, "success": True, "status": "success", "message": "Department deleted"}
     except Exception as e:
@@ -1304,111 +1169,73 @@ async def delete_department(department_id: int):
     finally:
         session.close()
 
-# ---------- Wings CRUD ----------
+
+# Wings
 @app.post("/api/config/wings")
 @app.put("/api/config/wings")
 async def create_wing(payload: WingUpsert):
     session = get_db_session(engine)
     try:
-        data = payload.model_dump(exclude_unset=True)
-        name = _s(data.get("name"))
-        department_id = data.get("department_id")
-
+        name = _s(payload.name)
         if not name:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "name is required"}, status_code=422)
-        if department_id is None:
+        if payload.department_id is None:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "department_id is required"}, status_code=422)
 
-        dep_exists = session.execute(
-            text("SELECT id FROM departments WHERE id=:id"),
-            {"id": int(department_id)}
-        ).scalar()
-        if not dep_exists:
+        dep = session.query(Department).filter(Department.id == int(payload.department_id)).first()
+        if not dep:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "department_id not found"}, status_code=404)
 
-        session.execute(
-            text("""
-                INSERT INTO wings (name, department_id, description, status, created_at)
-                VALUES (:name, :department_id, :description, :status, :created_at)
-            """),
-            {
-                "name": name,
-                "department_id": int(department_id),
-                "description": data.get("description"),
-                "status": data.get("status") or "active",
-                "created_at": now_karachi_naive(),
-            }
+        w = Wing(
+            name=name,
+            department_id=int(payload.department_id),
+            description=payload.description,
+            status=payload.status or "active",
+            created_at=now_karachi_naive()
         )
+        session.add(w)
         session.commit()
-        new_id = _last_insert_id(session)
-
-        row = session.execute(
-            text("SELECT id, name, department_id, description, status FROM wings WHERE id=:id"),
-            {"id": new_id}
-        ).mappings().first()
+        session.refresh(w)
 
         return {"ok": True, "success": True, "status": "success", "message": "Wing created", "wing": {
-            "id": row["id"], "name": row["name"], "departmentId": row["department_id"],
-            "description": row["description"], "status": row["status"]
+            "id": w.id, "name": w.name, "departmentId": w.department_id,
+            "description": w.description, "status": w.status
         }}
     except Exception as e:
         session.rollback()
         return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
     finally:
         session.close()
+
 
 @app.put("/api/config/wings/{wing_id}")
 @app.patch("/api/config/wings/{wing_id}")
 async def update_wing(wing_id: int, payload: WingUpsert):
     session = get_db_session(engine)
     try:
-        exists = session.execute(
-            text("SELECT id FROM wings WHERE id=:id"),
-            {"id": wing_id}
-        ).scalar()
-        if not exists:
+        w = session.query(Wing).filter(Wing.id == wing_id).first()
+        if not w:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Wing not found"}, status_code=404)
 
-        data = payload.model_dump(exclude_unset=True)
-
-        if "department_id" in data and data.get("department_id") is not None:
-            dep_exists = session.execute(
-                text("SELECT id FROM departments WHERE id=:id"),
-                {"id": int(data["department_id"])}
-            ).scalar()
-            if not dep_exists:
+        if payload.department_id is not None:
+            dep = session.query(Department).filter(Department.id == int(payload.department_id)).first()
+            if not dep:
                 return JSONResponse({"ok": False, "success": False, "status": "error", "error": "department_id not found"}, status_code=404)
+            w.department_id = int(payload.department_id)
 
-        session.execute(
-            text("""
-                UPDATE wings
-                SET
-                  name = COALESCE(:name, name),
-                  department_id = COALESCE(:department_id, department_id),
-                  description = COALESCE(:description, description),
-                  status = COALESCE(:status, status),
-                  updated_at = :updated_at
-                WHERE id = :id
-            """),
-            {
-                "id": wing_id,
-                "name": _s(data.get("name")) if "name" in data else None,
-                "department_id": int(data["department_id"]) if "department_id" in data and data.get("department_id") is not None else None,
-                "description": data.get("description") if "description" in data else None,
-                "status": data.get("status") if "status" in data else None,
-                "updated_at": now_karachi_naive(),
-            }
-        )
+        if payload.name is not None:
+            w.name = _s(payload.name)
+        if payload.description is not None:
+            w.description = payload.description
+        if payload.status is not None:
+            w.status = payload.status or w.status
+
         session.commit()
-
-        row = session.execute(
-            text("SELECT id, name, department_id, description, status FROM wings WHERE id=:id"),
-            {"id": wing_id}
-        ).mappings().first()
+        session.refresh(w)
 
         return {"ok": True, "success": True, "status": "success", "message": "Wing saved", "wing": {
-            "id": row["id"], "name": row["name"], "departmentId": row["department_id"],
-            "description": row["description"], "status": row["status"]
+            "id": w.id, "name": w.name, "departmentId": w.department_id,
+            "description": w.description, "status": w.status
         }}
     except Exception as e:
         session.rollback()
@@ -1416,29 +1243,23 @@ async def update_wing(wing_id: int, payload: WingUpsert):
     finally:
         session.close()
 
+
 @app.delete("/api/config/wings/{wing_id}")
 async def delete_wing(wing_id: int):
     session = get_db_session(engine)
     try:
-        exists = session.execute(
-            text("SELECT id FROM wings WHERE id=:id"),
-            {"id": wing_id}
-        ).scalar()
-        if not exists:
+        w = session.query(Wing).filter(Wing.id == wing_id).first()
+        if not w:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Wing not found"}, status_code=404)
 
-        # Optional safety: prevent delete if wards exist
-        ward_cnt = session.execute(
-            text("SELECT COUNT(*) FROM wards WHERE wing_id=:id"),
-            {"id": wing_id}
-        ).scalar() or 0
+        ward_cnt = session.query(func.count(Ward.id)).filter(Ward.wing_id == wing_id).scalar() or 0
         if int(ward_cnt) > 0:
             return JSONResponse(
                 {"ok": False, "success": False, "status": "error", "error": "Cannot delete wing: wards exist"},
                 status_code=400
             )
 
-        session.execute(text("DELETE FROM wings WHERE id=:id"), {"id": wing_id})
+        session.delete(w)
         session.commit()
         return {"ok": True, "success": True, "status": "success", "message": "Wing deleted"}
     except Exception as e:
@@ -1447,49 +1268,49 @@ async def delete_wing(wing_id: int):
     finally:
         session.close()
 
-# ---------- Wards CRUD ----------
+
+# Wards
 @app.post("/api/config/wards")
 @app.put("/api/config/wards")
 async def create_ward(payload: WardUpsert):
     session = get_db_session(engine)
     try:
-        data = payload.model_dump(exclude_unset=True)
-
-        if not _s(data.get("name")):
+        if not _s(payload.name):
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "name is required"}, status_code=422)
-        if data.get("floor_id") is None:
+        if payload.floor_id is None:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "floor_id is required"}, status_code=422)
 
-        w = Ward()
-        w.name = _s(data.get("name"))
-        w.floor_id = int(data.get("floor_id"))
-        w.ward_type = data.get("ward_type")
-        w.description = data.get("description")
-        w.status = data.get("status") or "active"
+        floor = session.query(Floor).filter(Floor.id == int(payload.floor_id)).first()
+        if not floor:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "floor_id not found"}, status_code=404)
 
+        if payload.wing_id is not None:
+            wing = session.query(Wing).filter(Wing.id == int(payload.wing_id)).first()
+            if not wing:
+                return JSONResponse({"ok": False, "success": False, "status": "error", "error": "wing_id not found"}, status_code=404)
+
+        w = Ward(
+            name=_s(payload.name),
+            floor_id=int(payload.floor_id),
+            wing_id=int(payload.wing_id) if payload.wing_id is not None else None,
+            ward_type=payload.ward_type,
+            description=payload.description,
+            status=payload.status or "active",
+            created_at=now_karachi_naive()
+        )
         session.add(w)
         session.commit()
         session.refresh(w)
 
-        # ✅ save optional department_id / wing_id into DB columns (if they exist)
-        try:
-            session.execute(
-                text("UPDATE wards SET department_id=:did, wing_id=:wid WHERE id=:id"),
-                {
-                    "id": w.id,
-                    "did": int(data["department_id"]) if data.get("department_id") is not None else None,
-                    "wid": int(data["wing_id"]) if data.get("wing_id") is not None else None,
-                }
-            )
-            session.commit()
-        except Exception:
-            session.rollback()
-            session.commit()
+        department_id = None
+        if w.wing_id:
+            wing = session.query(Wing).filter(Wing.id == w.wing_id).first()
+            department_id = wing.department_id if wing else None
 
         return {"ok": True, "success": True, "status": "success", "message": "Ward created", "ward": {
             "id": w.id, "name": w.name, "floorId": w.floor_id,
-            "departmentId": data.get("department_id"),
-            "wingId": data.get("wing_id"),
+            "departmentId": department_id,
+            "wingId": w.wing_id,
             "wardType": w.ward_type, "description": w.description, "status": w.status
         }}
     except Exception as e:
@@ -1497,6 +1318,7 @@ async def create_ward(payload: WardUpsert):
         return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
     finally:
         session.close()
+
 
 @app.put("/api/config/wards/{ward_id}")
 @app.patch("/api/config/wards/{ward_id}")
@@ -1508,61 +1330,42 @@ async def update_ward(ward_id: int, payload: WardUpsert):
         if not w:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Ward not found"}, status_code=404)
 
-        data = payload.model_dump(exclude_unset=True)
-        if "name" in data:
-            w.name = _s(data.get("name"))
-        if "floor_id" in data and data.get("floor_id") is not None:
-            w.floor_id = int(data.get("floor_id"))
-        if "ward_type" in data:
-            w.ward_type = data.get("ward_type") or w.ward_type
-        if "description" in data:
-            w.description = data.get("description")
-        if "status" in data:
-            w.status = data.get("status") or w.status
+        if payload.name is not None:
+            w.name = _s(payload.name)
+        if payload.floor_id is not None:
+            floor = session.query(Floor).filter(Floor.id == int(payload.floor_id)).first()
+            if not floor:
+                return JSONResponse({"ok": False, "success": False, "status": "error", "error": "floor_id not found"}, status_code=404)
+            w.floor_id = int(payload.floor_id)
+
+        if payload.wing_id is not None:
+            if payload.wing_id == 0:
+                w.wing_id = None
+            else:
+                wing = session.query(Wing).filter(Wing.id == int(payload.wing_id)).first()
+                if not wing:
+                    return JSONResponse({"ok": False, "success": False, "status": "error", "error": "wing_id not found"}, status_code=404)
+                w.wing_id = int(payload.wing_id)
+
+        if payload.ward_type is not None:
+            w.ward_type = payload.ward_type
+        if payload.description is not None:
+            w.description = payload.description
+        if payload.status is not None:
+            w.status = payload.status or w.status
 
         session.commit()
         session.refresh(w)
 
-        # ✅ update optional columns
-        try:
-            if "department_id" in data or "wing_id" in data:
-                session.execute(
-                    text("""
-                        UPDATE wards
-                        SET
-                          department_id = COALESCE(:did, department_id),
-                          wing_id = COALESCE(:wid, wing_id)
-                        WHERE id = :id
-                    """),
-                    {
-                        "id": ward_id,
-                        "did": int(data["department_id"]) if "department_id" in data and data.get("department_id") is not None else None,
-                        "wid": int(data["wing_id"]) if "wing_id" in data and data.get("wing_id") is not None else None,
-                    }
-                )
-                session.commit()
-        except Exception:
-            session.rollback()
-            session.commit()
-
-        # read back optional
-        dep_id = None
-        wing_id = None
-        try:
-            row = session.execute(
-                text("SELECT department_id, wing_id FROM wards WHERE id=:id"),
-                {"id": ward_id}
-            ).mappings().first()
-            if row:
-                dep_id = row.get("department_id")
-                wing_id = row.get("wing_id")
-        except Exception:
-            pass
+        department_id = None
+        if w.wing_id:
+            wing = session.query(Wing).filter(Wing.id == w.wing_id).first()
+            department_id = wing.department_id if wing else None
 
         return {"ok": True, "success": True, "status": "success", "message": "Ward saved", "ward": {
             "id": w.id, "name": w.name, "floorId": w.floor_id,
-            "departmentId": dep_id,
-            "wingId": wing_id,
+            "departmentId": department_id,
+            "wingId": w.wing_id,
             "wardType": w.ward_type, "description": w.description, "status": w.status
         }}
     except Exception as e:
@@ -1570,6 +1373,7 @@ async def update_ward(ward_id: int, payload: WardUpsert):
         return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
     finally:
         session.close()
+
 
 @app.delete("/api/config/wards/{ward_id}")
 async def delete_ward(ward_id: int):
@@ -1587,26 +1391,35 @@ async def delete_ward(ward_id: int):
     finally:
         session.close()
 
-# ---------- Rooms CRUD ----------
+
+# Rooms
 @app.post("/api/config/rooms")
 @app.put("/api/config/rooms")
 async def create_room(payload: RoomUpsert):
     session = get_db_session(engine)
     try:
-        r = Room()
-        data = payload.model_dump(exclude_unset=True)
-        for k, v in data.items():
-            _set_if_attr(r, k, v)
+        if payload.ward_id is None:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "ward_id is required"}, status_code=422)
+        if not _s(payload.room_number):
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "room_number is required"}, status_code=422)
 
-        rip = _s(getattr(r, "system_ip", None))
-        if rip:
-            exists = session.query(Room).filter(Room.system_ip == rip).first()
+        ward = session.query(Ward).filter(Ward.id == int(payload.ward_id)).first()
+        if not ward:
+            return JSONResponse({"ok": False, "success": False, "status": "error", "error": "ward_id not found"}, status_code=404)
+
+        if _s(payload.system_ip):
+            exists = session.query(Room).filter(Room.system_ip == _s(payload.system_ip)).first()
             if exists:
-                return JSONResponse(
-                    {"ok": False, "success": False, "status": "error", "error": "system_ip already exists in another room"},
-                    status_code=400
-                )
+                return JSONResponse({"ok": False, "success": False, "status": "error", "error": "system_ip already exists in another room"}, status_code=400)
 
+        r = Room(
+            ward_id=int(payload.ward_id),
+            room_name=_s(payload.room_name) or None,
+            room_number=_s(payload.room_number),
+            system_ip=_s(payload.system_ip) or None,
+            status=payload.status or "active",
+            created_at=now_karachi_naive()
+        )
         session.add(r)
         session.commit()
         session.refresh(r)
@@ -1625,6 +1438,7 @@ async def create_room(payload: RoomUpsert):
     finally:
         session.close()
 
+
 @app.put("/api/config/rooms/{room_id}")
 @app.patch("/api/config/rooms/{room_id}")
 async def update_room(room_id: int, payload: RoomUpsert):
@@ -1634,18 +1448,29 @@ async def update_room(room_id: int, payload: RoomUpsert):
         if not r:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Room not found"}, status_code=404)
 
-        data = payload.model_dump(exclude_unset=True)
-        for k, v in data.items():
-            _set_if_attr(r, k, v)
+        if payload.ward_id is not None:
+            ward = session.query(Ward).filter(Ward.id == int(payload.ward_id)).first()
+            if not ward:
+                return JSONResponse({"ok": False, "success": False, "status": "error", "error": "ward_id not found"}, status_code=404)
+            r.ward_id = int(payload.ward_id)
 
-        rip = _s(getattr(r, "system_ip", None))
-        if rip:
-            exists = session.query(Room).filter(Room.system_ip == rip, Room.id != r.id).first()
-            if exists:
-                return JSONResponse(
-                    {"ok": False, "success": False, "status": "error", "error": "system_ip already exists in another room"},
-                    status_code=400
-                )
+        if payload.room_name is not None:
+            r.room_name = _s(payload.room_name) or None
+        if payload.room_number is not None:
+            r.room_number = _s(payload.room_number)
+
+        if payload.system_ip is not None:
+            rip = _s(payload.system_ip)
+            if rip:
+                exists = session.query(Room).filter(Room.system_ip == rip, Room.id != r.id).first()
+                if exists:
+                    return JSONResponse({"ok": False, "success": False, "status": "error", "error": "system_ip already exists in another room"}, status_code=400)
+                r.system_ip = rip
+            else:
+                r.system_ip = None
+
+        if payload.status is not None:
+            r.status = payload.status or r.status
 
         session.commit()
         session.refresh(r)
@@ -1664,6 +1489,7 @@ async def update_room(room_id: int, payload: RoomUpsert):
     finally:
         session.close()
 
+
 @app.delete("/api/config/rooms/{room_id}")
 async def delete_room(room_id: int):
     session = get_db_session(engine)
@@ -1680,7 +1506,8 @@ async def delete_room(room_id: int):
     finally:
         session.close()
 
-# ---------- Beds CRUD ----------
+
+# Beds
 @app.post("/api/config/beds")
 @app.put("/api/config/beds")
 async def create_bed(payload: BedUpsert):
@@ -1693,31 +1520,48 @@ async def create_bed(payload: BedUpsert):
         if not _s(payload.bed_number):
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "bedNumber is required"}, status_code=422)
 
-        ip = _bed_ip(payload)
+        ip = _s(payload.ip_address) or None
         if ip:
             msg = _ensure_intercom_ip_unique(session, ip)
             if msg:
                 return JSONResponse({"ok": False, "success": False, "status": "error", "error": msg}, status_code=400)
 
-        b = Bed()
-        b.room_id = rid
-        b.bed_number = _s(payload.bed_number)
-        b.bed_name = _s(payload.bed_name) or None
-        b.camera_id = payload.camera_id
-        b.status = payload.status or "available"
-        b.intercom_ip = ip
+        # camera_id can be null; if provided, ensure camera exists
+        if payload.camera_id is not None:
+            cam = session.query(Camera).filter(Camera.id == int(payload.camera_id)).first()
+            if not cam:
+                return JSONResponse({"ok": False, "success": False, "status": "error", "error": "camera_id not found"}, status_code=404)
 
+        b = Bed(
+            room_id=int(rid),
+            bed_number=_s(payload.bed_number),
+            bed_name=_s(payload.bed_name) or None,
+            camera_id=int(payload.camera_id) if payload.camera_id is not None else None,
+            status=payload.status or "available",
+            intercom_ip=ip,
+            created_at=now_karachi_naive()
+        )
         session.add(b)
         session.commit()
         session.refresh(b)
 
         room = session.query(Room).filter(Room.id == b.room_id).first()
-        return {"ok": True, "success": True, "status": "success", "message": "Bed created", "bed": _bed_out(b, room)}
+        return {"ok": True, "success": True, "status": "success", "message": "Bed created", "bed": {
+            "id": b.id,
+            "roomId": b.room_id,
+            "roomName": room.room_name if room else None,
+            "bedName": b.bed_name,
+            "bedNumber": b.bed_number,
+            "cameraId": b.camera_id,
+            "status": b.status,
+            "ipAddress": b.intercom_ip,
+        }}
     except Exception as e:
         session.rollback()
         return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
     finally:
         session.close()
+
 
 @app.put("/api/config/beds/{bed_id}")
 @app.patch("/api/config/beds/{bed_id}")
@@ -1731,7 +1575,7 @@ async def update_bed(bed_id: int, payload: BedUpsert):
 
         rid = _resolve_room_id_for_bed(session, payload)
         if rid is not None:
-            b.room_id = rid
+            b.room_id = int(rid)
 
         if payload.bed_number is not None:
             b.bed_number = _s(payload.bed_number)
@@ -1740,13 +1584,19 @@ async def update_bed(bed_id: int, payload: BedUpsert):
             b.bed_name = _s(payload.bed_name) or None
 
         if payload.camera_id is not None:
-            b.camera_id = payload.camera_id
+            if payload.camera_id == 0:
+                b.camera_id = None
+            else:
+                cam = session.query(Camera).filter(Camera.id == int(payload.camera_id)).first()
+                if not cam:
+                    return JSONResponse({"ok": False, "success": False, "status": "error", "error": "camera_id not found"}, status_code=404)
+                b.camera_id = int(payload.camera_id)
 
         if payload.status is not None:
             b.status = payload.status or b.status
 
-        ip = _bed_ip(payload)
         if payload.ip_address is not None:
+            ip = _s(payload.ip_address) or None
             if ip:
                 msg = _ensure_intercom_ip_unique(session, ip, ignore_bed_id=bed_id)
                 if msg:
@@ -1757,12 +1607,22 @@ async def update_bed(bed_id: int, payload: BedUpsert):
         session.refresh(b)
 
         room = session.query(Room).filter(Room.id == b.room_id).first()
-        return {"ok": True, "success": True, "status": "success", "message": "Bed saved", "bed": _bed_out(b, room)}
+        return {"ok": True, "success": True, "status": "success", "message": "Bed saved", "bed": {
+            "id": b.id,
+            "roomId": b.room_id,
+            "roomName": room.room_name if room else None,
+            "bedName": b.bed_name,
+            "bedNumber": b.bed_number,
+            "cameraId": b.camera_id,
+            "status": b.status,
+            "ipAddress": b.intercom_ip,
+        }}
     except Exception as e:
         session.rollback()
         return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
     finally:
         session.close()
+
 
 @app.delete("/api/config/beds/{bed_id}")
 async def delete_bed(bed_id: int):
@@ -1771,7 +1631,6 @@ async def delete_bed(bed_id: int):
         b = session.query(Bed).filter(Bed.id == bed_id).first()
         if not b:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Bed not found"}, status_code=404)
-
         session.delete(b)
         session.commit()
         return {"ok": True, "success": True, "status": "success", "message": "Bed deleted"}
@@ -1781,19 +1640,29 @@ async def delete_bed(bed_id: int):
     finally:
         session.close()
 
-# ---------- Colors CRUD ----------
+
+# Colors
 @app.post("/api/config/colors")
 @app.put("/api/config/colors")
 async def create_color(payload: ColorUpsert):
     session = get_db_session(engine)
     try:
-        data = payload.model_dump(exclude_unset=True)
-        et = _s(data.get("event_type"))
-        col = _s(data.get("color"))
+        et = _s(payload.event_type)
+        col = _s(payload.color)
         if not et or not col:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "eventType and color required"}, status_code=422)
 
-        c = ColorScheme(event_type=et, color=col)
+        # upsert behavior: if exists, update
+        existing = session.query(ColorScheme).filter(ColorScheme.event_type == et).first()
+        if existing:
+            existing.color = col
+            session.commit()
+            session.refresh(existing)
+            return {"ok": True, "success": True, "status": "success", "message": "Color saved", "color": {
+                "id": existing.id, "eventType": existing.event_type, "color": existing.color
+            }}
+
+        c = ColorScheme(event_type=et, color=col, created_at=now_karachi_naive(), updated_at=now_karachi_naive())
         session.add(c)
         session.commit()
         session.refresh(c)
@@ -1806,6 +1675,7 @@ async def create_color(payload: ColorUpsert):
     finally:
         session.close()
 
+
 @app.put("/api/config/colors/{color_id}")
 @app.patch("/api/config/colors/{color_id}")
 async def update_color(color_id: int, payload: ColorUpsert):
@@ -1815,11 +1685,10 @@ async def update_color(color_id: int, payload: ColorUpsert):
         if not c:
             return JSONResponse({"ok": False, "success": False, "status": "error", "error": "Color not found"}, status_code=404)
 
-        data = payload.model_dump(exclude_unset=True)
-        if "event_type" in data and data.get("event_type"):
-            c.event_type = _s(data.get("event_type"))
-        if "color" in data and data.get("color"):
-            c.color = _s(data.get("color"))
+        if payload.event_type is not None and _s(payload.event_type):
+            c.event_type = _s(payload.event_type)
+        if payload.color is not None and _s(payload.color):
+            c.color = _s(payload.color)
 
         session.commit()
         session.refresh(c)
@@ -1831,6 +1700,7 @@ async def update_color(color_id: int, payload: ColorUpsert):
         return JSONResponse({"ok": False, "success": False, "status": "error", "error": str(e)}, status_code=400)
     finally:
         session.close()
+
 
 @app.delete("/api/config/colors/{color_id}")
 async def delete_color(color_id: int):
@@ -1848,6 +1718,7 @@ async def delete_color(color_id: int):
     finally:
         session.close()
 
+
 # ----------------- WebSocket -----------------
 
 @app.websocket("/ws")
@@ -1862,6 +1733,7 @@ async def websocket_endpoint(ws: WebSocket):
         pass
     finally:
         active_connections.pop(client_id, None)
+
 
 # ----------------- UDP Listener -----------------
 
@@ -1900,7 +1772,8 @@ async def udp_listener():
                 if room and not bed:
                     bed = resolve_bed_in_room(session, room, decoded)
 
-                    if bed and not _s(getattr(bed, "intercom_ip", None)):
+                    # Auto-learn intercom_ip for that bed (if empty)
+                    if bed and not _s(bed.intercom_ip):
                         msg = _ensure_intercom_ip_unique(session, incoming_ip, ignore_bed_id=bed.id)
                         if not msg:
                             bed.intercom_ip = incoming_ip
@@ -1912,6 +1785,7 @@ async def udp_listener():
                 room_id = room.id if room else (bed.room_id if bed else None)
                 bed_id = bed.id if bed else None
 
+                # End active session on reset
                 if event_type.lower() == "reset" and bed_id:
                     cs = session.query(CallSession).filter(
                         CallSession.bed_id == bed_id,
@@ -1968,6 +1842,7 @@ async def udp_listener():
 
         except Exception as e:
             print(f"✗ UDP loop error: {e}")
+
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host=Config.SERVER_HOST, port=Config.SERVER_PORT, reload=False)

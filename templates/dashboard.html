@@ -20,7 +20,6 @@
       --shadow2: 0 16px 40px rgba(2, 6, 23, .12);
       --radius: 18px;
       --radius2: 22px;
-
       --accent: #3b82f6;
     }
 
@@ -35,22 +34,17 @@
 
     .app { display:flex; min-height:100vh; width:100%; }
 
-    /* ✅ Sidebar shell container (MATCH calls.html) */
-    /* ✅ Sidebar size + no scrollbar */
+    /* Sidebar */
     .sidebar{ width: 150px; padding:14px; flex: 0 0 auto; }
     .sidebar .shell{
-      
       height: calc(100vh - 28px);
       border-radius: 22px;
       background: linear-gradient(180deg, rgba(17,24,39,.98), rgba(31,41,55,.96));
       box-shadow: var(--shadow2);
-      overflow: hidden;                 /* ✅ no sidebar scroll */
+      overflow: hidden;
       border: 1px solid rgba(255,255,255,.08);
     }
-
     .sidebar .shell, .sidebar .shell * { color:#fff; }
-
-    /* Active nav style */
     .sidebar-item.is-active{
       color:#fff !important;
       background: rgba(255,255,255,.14) !important;
@@ -116,12 +110,13 @@
       box-shadow: 0 8px 18px rgba(2,6,23,.10);
     }
 
+    /* Search */
     .search{
       position:relative;
     }
     .search input{
-      width: 240px;
-      max-width: 70vw;
+      width: 260px;
+      max-width: 74vw;
       padding: 10px 12px 10px 38px;
       border-radius: 999px;
       border: 1px solid var(--border);
@@ -137,6 +132,89 @@
       left: 12px; top: 50%;
       transform: translateY(-50%);
       opacity:.6;
+      pointer-events:none;
+    }
+
+    .searchResults{
+      position:absolute;
+      left:0;
+      right:0;
+      top: calc(100% + 10px);
+      background: var(--panel);
+      border: 1px solid rgba(15,23,42,.10);
+      border-radius: 16px;
+      box-shadow: 0 20px 44px rgba(2,6,23,.12);
+      overflow:hidden;
+      display:none;
+      z-index: 50;
+    }
+    .searchResultsHeader{
+      padding: 10px 12px;
+      font-size: 11px;
+      font-weight: 900;
+      color: rgba(15,23,42,.55);
+      background: rgba(15,23,42,.03);
+      border-bottom: 1px solid rgba(15,23,42,.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .searchResultsHeader button{
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      font-weight: 1000;
+      color: rgba(15,23,42,.55);
+      padding: 6px 10px;
+      border-radius: 10px;
+    }
+    .searchResultsHeader button:hover{
+      background: rgba(15,23,42,.05);
+      color: rgba(15,23,42,.80);
+    }
+    .searchItem{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 12px 12px;
+      cursor:pointer;
+      border-bottom: 1px solid rgba(15,23,42,.06);
+    }
+    .searchItem:last-child{ border-bottom: 0; }
+    .searchItem:hover{ background: rgba(37,99,235,.06); }
+    .searchTag{
+      font-size: 11px;
+      font-weight: 1000;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(15,23,42,.10);
+      background: rgba(15,23,42,.03);
+      color: rgba(15,23,42,.72);
+      white-space: nowrap;
+    }
+    .searchTxt{
+      min-width:0;
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap: 2px;
+    }
+    .searchTxt .t1{
+      font-size: 12px;
+      font-weight: 1000;
+      color: rgba(15,23,42,.92);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .searchTxt .t2{
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(100,116,139,.95);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
     }
 
     /* Content */
@@ -223,7 +301,19 @@
     .bRed{ background: rgba(239,68,68,.12); color: #dc2626; }
     .bGray{ background: rgba(100,116,139,.12); color: #475569; }
 
-    /* Chart */
+    /* Charts layout */
+    .charts{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+    @media (max-width: 1100px){
+      .charts{ grid-template-columns: 1fr; }
+    }
+
+    /* Chart header / actions */
     .chartHead{
       padding: 16px 18px;
       display:flex;
@@ -261,6 +351,7 @@
       font-weight: 900;
       font-size: 12px;
       transition: .15s ease;
+      user-select:none;
     }
     .btnGhost:hover{ transform: translateY(-1px); box-shadow: var(--shadow); }
     .btnLink{
@@ -282,8 +373,108 @@
       height: 320px;
       width: 100%;
     }
+    .chartWrap.pie{
+      height: 320px;
+    }
 
-    /* ✅ Responsive (MATCH calls.html) */
+    /* Modal (Event filters) */
+    .modalBackdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.45);
+      backdrop-filter: blur(6px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 1000;
+    }
+    .modal{
+      width: min(560px, 92vw);
+      background: var(--panel);
+      border: 1px solid rgba(15,23,42,.10);
+      border-radius: 20px;
+      box-shadow: 0 28px 80px rgba(2,6,23,.30);
+      overflow:hidden;
+    }
+    .modalHead{
+      padding: 14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      border-bottom: 1px solid rgba(15,23,42,.08);
+      background: rgba(15,23,42,.02);
+    }
+    .modalHead h3{
+      margin:0;
+      font-size: 14px;
+      font-weight: 1000;
+      letter-spacing: -0.2px;
+    }
+    .modalHead button{
+      border: 1px solid rgba(15,23,42,.12);
+      background: rgba(15,23,42,.03);
+      color: rgba(15,23,42,.75);
+      padding: 8px 10px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight: 1000;
+      font-size: 12px;
+    }
+    .modalBody{
+      padding: 14px 16px 16px;
+      max-height: 62vh;
+      overflow:auto;
+    }
+    .filterGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 12px;
+    }
+    @media (max-width: 520px){
+      .filterGrid{ grid-template-columns: 1fr; }
+    }
+    .chk{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(15,23,42,.10);
+      background: rgba(15,23,42,.02);
+      cursor:pointer;
+      user-select:none;
+    }
+    .swatch{
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid rgba(15,23,42,.18);
+      box-shadow: 0 6px 14px rgba(2,6,23,.10);
+    }
+    .chk span{
+      font-size: 12px;
+      font-weight: 950;
+      color: rgba(15,23,42,.86);
+    }
+    .modalFoot{
+      padding: 12px 16px;
+      border-top: 1px solid rgba(15,23,42,.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      background: rgba(15,23,42,.02);
+      flex-wrap: wrap;
+    }
+    .modalFoot .left{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* ✅ Responsive */
     @media (max-width: 1024px){
       .sidebar{ display:none; }
       .topbar{ padding: 16px; }
@@ -295,7 +486,7 @@
 
 <body>
   <div class="app">
-    <!-- ✅ Sidebar (Server-side include) -->
+    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="shell">
         {% include "sidebar.html" %}
@@ -319,12 +510,13 @@
             <button id="btn-all"   data-filter="all"   onclick="app.setTimeFilter('all')">All time</button>
           </div>
 
-          <div class="search">
+          <div class="search" id="searchBox">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="rgba(15,23,42,.55)" stroke-width="2"/>
               <path d="M16.6 16.6L21 21" stroke="rgba(15,23,42,.55)" stroke-width="2" stroke-linecap="round"/>
             </svg>
-            <input id="search-input" type="text" placeholder="Search" />
+            <input id="search-input" type="text" placeholder="Search bed / room / ward / event type…" />
+            <div id="search-results" class="searchResults" aria-hidden="true"></div>
           </div>
         </div>
       </header>
@@ -338,7 +530,7 @@
               <div class="sub">Last 7 days</div>
               <div class="statVal">
                 <div class="num" id="stat-total">0</div>
-                <span class="pill green">+3</span>
+                <span class="pill green">Live</span>
               </div>
             </div>
             <div class="iconBubble bBlue" aria-hidden="true">
@@ -354,7 +546,7 @@
               <div class="sub">Last 7 days</div>
               <div class="statVal">
                 <div class="num" id="stat-urgent">0</div>
-                <span class="pill">0</span>
+                <span class="pill">Today</span>
               </div>
             </div>
             <div class="iconBubble bRed" aria-hidden="true">
@@ -370,7 +562,7 @@
               <div class="sub">Last 7 days</div>
               <div class="statVal">
                 <div class="num" id="stat-calls">0</div>
-                <span class="pill">+5</span>
+                <span class="pill">Active</span>
               </div>
             </div>
             <div class="iconBubble bBlue" aria-hidden="true">
@@ -383,10 +575,10 @@
           <div class="card statCard">
             <div>
               <div class="k">Recently Cleared</div>
-              <div class="sub">Last 7 days</div>
+              <div class="sub">Last 1 hour</div>
               <div class="statVal">
                 <div class="num" id="stat-cleared">0</div>
-                <span class="pill">/hour</span>
+                <span class="pill">Done</span>
               </div>
             </div>
             <div class="iconBubble bGray" aria-hidden="true">
@@ -397,21 +589,42 @@
           </div>
         </div>
 
-        <!-- Timeline -->
-        <div class="card" style="margin-top:16px;">
-          <div class="chartHead">
-            <div>
-              <h2>Event Timeline Distribution</h2>
-              <p id="timeline-sub">Last 24 days</p>
+        <!-- Charts -->
+        <div class="charts">
+          <!-- Timeline -->
+          <div class="card">
+            <div class="chartHead">
+              <div>
+                <h2>Event Timeline Distribution</h2>
+                <p id="timeline-sub">Loading…</p>
+              </div>
+              <div class="chartActions">
+                <button id="btn-download" class="btnLink" type="button">Download report ↓</button>
+                <button id="btn-filters" class="btnGhost" type="button">Event type filters</button>
+              </div>
             </div>
-            <div class="chartActions">
-              <button class="btnLink" type="button">Download report ↓</button>
-              <button class="btnGhost" type="button">Event type filters</button>
+            <div class="chartBody">
+              <div class="chartWrap">
+                <canvas id="timelineChart"></canvas>
+              </div>
             </div>
           </div>
-          <div class="chartBody">
-            <div class="chartWrap">
-              <canvas id="timelineChart"></canvas>
+
+          <!-- Pie chart -->
+          <div class="card">
+            <div class="chartHead">
+              <div>
+                <h2>Event Type Share</h2>
+                <p id="pie-sub">Loading…</p>
+              </div>
+              <div class="chartActions">
+                <button id="btn-pie-reset" class="btnGhost" type="button">Reset</button>
+              </div>
+            </div>
+            <div class="chartBody">
+              <div class="chartWrap pie">
+                <canvas id="pieChart"></canvas>
+              </div>
             </div>
           </div>
         </div>
@@ -420,8 +633,28 @@
     </main>
   </div>
 
+  <!-- Filters modal -->
+  <div id="modal-backdrop" class="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <div class="modalHead">
+        <h3>Event type filters</h3>
+        <button type="button" onclick="app.closeFilterModal()">Close</button>
+      </div>
+      <div class="modalBody">
+        <div id="filter-grid" class="filterGrid"></div>
+      </div>
+      <div class="modalFoot">
+        <div class="left">
+          <button class="btnGhost" type="button" onclick="app.selectAllEventTypes()">Select all</button>
+          <button class="btnGhost" type="button" onclick="app.clearAllEventTypes()">Clear all</button>
+        </div>
+        <button class="btnLink" type="button" onclick="app.applyEventTypeFilters()">Apply</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // ✅ Highlight active sidebar item (works for all pages)
+    // Highlight active sidebar item
     (function setActiveNav(){
       const path = location.pathname === "/" ? "dashboard" : location.pathname.split("/")[1];
       document.querySelectorAll("[data-nav]").forEach(a => {
@@ -434,20 +667,89 @@
         stats: { total_active: 0, urgent_alarms: 0, ongoing_calls: 0, recently_cleared: 0 },
         timeFilter: '7days',
         timelineChart: null,
+        pieChart: null,
         ws: null,
         customColors: {},
+
+        // search/report/cache
+        recentEvents: [],
+        recentLoadedAt: 0,
+        searchTimer: null,
+
+        // filters
+        allEventTypes: [],
+        enabledTypes: new Set(),  // when empty => all enabled
+        modalDraft: new Set(),
+
+        lastTimeline: null, // keep last timelineData
       },
 
       async init() {
         await this.loadCustomColors(true);
+        this.bindUI();
         this.setupWebSocket();
-        this.loadStats();
-        this.loadTimeline();
+        await this.loadStats();
+        await this.loadTimeline();
         this.updateFilterButtons();
 
         setInterval(() => this.loadStats(), 10000);
         setInterval(() => this.loadTimeline(), 30000);
         setInterval(() => this.loadCustomColors(true), 30000);
+      },
+
+      bindUI(){
+        const dl = document.getElementById('btn-download');
+        const fl = document.getElementById('btn-filters');
+        const pr = document.getElementById('btn-pie-reset');
+        if (dl) dl.addEventListener('click', () => this.downloadReport());
+        if (fl) fl.addEventListener('click', () => this.openFilterModal());
+        if (pr) pr.addEventListener('click', () => { this.enabledTypes = new Set(); this.applyEventTypeFilters(); });
+
+        // Search: show results + ENTER -> go to calls with search
+        const input = document.getElementById('search-input');
+        const box = document.getElementById('searchBox');
+        if (input) {
+          input.addEventListener('input', () => {
+            clearTimeout(this.data.searchTimer);
+            this.data.searchTimer = setTimeout(() => this.runSearch(input.value), 150);
+          });
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const q = (input.value || '').trim();
+              if (q) window.location.href = `/calls?search=${encodeURIComponent(q)}`;
+              this.hideSearchResults();
+            }
+            if (e.key === 'Escape') {
+              this.hideSearchResults();
+              input.blur();
+            }
+          });
+        }
+
+        // click outside -> close search results
+        document.addEventListener('click', (e) => {
+          const sr = document.getElementById('search-results');
+          if (!sr || sr.style.display !== 'block') return;
+          if (box && box.contains(e.target)) return;
+          this.hideSearchResults();
+        });
+
+        // ESC closes modal
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            this.closeFilterModal();
+            this.hideSearchResults();
+          }
+        });
+
+        // Modal backdrop click closes
+        const mb = document.getElementById('modal-backdrop');
+        if (mb) {
+          mb.addEventListener('click', (e) => {
+            if (e.target === mb) this.closeFilterModal();
+          });
+        }
       },
 
       setupWebSocket() {
@@ -528,26 +830,39 @@
           const days = this.getFilteredDays();
           const response = await fetch(`/api/timeline?days=${days}`);
           const data = await response.json();
-          this.renderTimelineChart(data.timeline || {});
+          const timeline = data.timeline || {};
+          this.data.lastTimeline = timeline;
+
+          this.renderTimelineChart(timeline);
+          this.renderPieChart(timeline);
         } catch (e) {
           console.error("[dashboard] Error loading timeline:", e);
         }
       },
 
+      getEnabledTypesArray(allTypes){
+        // if enabledTypes is empty => all enabled
+        if (!this.data.enabledTypes || this.data.enabledTypes.size === 0) return allTypes.slice();
+        return allTypes.filter(t => this.data.enabledTypes.has(String(t)));
+      },
+
       renderTimelineChart(timelineData) {
-        const ctx = document.getElementById('timelineChart');
-        if (!ctx) return;
+        const canvas = document.getElementById('timelineChart');
+        if (!canvas) return;
 
         const labels = Object.keys(timelineData).sort();
         const datasets = {};
+        const typesSet = new Set();
 
         labels.forEach(date => {
           const dayObj = timelineData[date] || {};
           Object.keys(dayObj).forEach(eventType => {
-            if (!datasets[eventType]) {
-              const col = this.getEventTypeColor(eventType);
-              datasets[eventType] = {
-                label: eventType,
+            const et = eventType || "Unknown";
+            typesSet.add(et);
+            if (!datasets[et]) {
+              const col = this.getEventTypeColor(et);
+              datasets[et] = {
+                label: et,
                 data: [],
                 borderColor: col,
                 backgroundColor: this.hexToRgba(col, 0.18),
@@ -558,27 +873,418 @@
           });
         });
 
+        const allTypes = Array.from(typesSet).sort((a,b)=>String(a).localeCompare(String(b)));
+        this.data.allEventTypes = allTypes;
+
         labels.forEach(date => {
           Object.keys(datasets).forEach(eventType => {
             datasets[eventType].data.push((timelineData[date] || {})[eventType] || 0);
           });
         });
 
+        const enabled = this.getEnabledTypesArray(allTypes);
+        const finalDatasets = Object.values(datasets).filter(ds => enabled.includes(ds.label));
+
         if (this.data.timelineChart) this.data.timelineChart.destroy();
 
-        this.data.timelineChart = new Chart(ctx, {
+        this.data.timelineChart = new Chart(canvas, {
           type: 'line',
-          data: { labels, datasets: Object.values(datasets) },
+          data: { labels, datasets: finalDatasets },
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: true, position: 'top' } },
+            plugins: {
+              legend: { display: true, position: 'top' },
+              tooltip: { mode: 'index', intersect: false }
+            },
+            interaction: { mode: 'nearest', axis: 'x', intersect: false },
             scales: { y: { beginAtZero: true } }
           }
         });
 
-        document.getElementById('timeline-sub').textContent =
-          `Last ${Math.min(labels.length, this.getFilteredDays())} day(s)`;
+        const days = Math.min(labels.length, this.getFilteredDays());
+        document.getElementById('timeline-sub').textContent = `Last ${days} day(s)`;
+
+        // keep modal draft in sync
+        if (!this.data.modalDraft || this.data.modalDraft.size === 0) {
+          // don't overwrite if user already opened modal and selected
+          // but do ensure enabledTypes doesn't reference missing types
+          if (this.data.enabledTypes && this.data.enabledTypes.size > 0) {
+            const next = new Set();
+            enabled.forEach(t => next.add(t));
+            this.data.enabledTypes = next.size === allTypes.length ? new Set() : next;
+          }
+        }
+      },
+
+      renderPieChart(timelineData){
+        const canvas = document.getElementById('pieChart');
+        if (!canvas) return;
+
+        // aggregate
+        const totals = {};
+        Object.keys(timelineData || {}).forEach(date => {
+          const dayObj = timelineData[date] || {};
+          Object.keys(dayObj).forEach(et => {
+            const k = et || "Unknown";
+            totals[k] = (totals[k] || 0) + (Number(dayObj[et]) || 0);
+          });
+        });
+
+        const allTypes = Object.keys(totals).sort((a,b)=>String(a).localeCompare(String(b)));
+        const enabled = this.getEnabledTypesArray(allTypes);
+
+        const labels = enabled.filter(t => (totals[t] || 0) > 0);
+        const data = labels.map(t => totals[t] || 0);
+        const colors = labels.map(t => this.hexToRgba(this.getEventTypeColor(t), 0.75));
+
+        const pieSub = document.getElementById('pie-sub');
+        const totalAll = data.reduce((a,b)=>a+b,0);
+        pieSub.textContent = totalAll ? `Total ${totalAll} event(s)` : 'No data';
+
+        if (this.data.pieChart) this.data.pieChart.destroy();
+
+        this.data.pieChart = new Chart(canvas, {
+          type: 'pie',
+          data: {
+            labels,
+            datasets: [{
+              data,
+              backgroundColor: colors,
+              borderColor: colors.map(c => c.replace(/,0\.75\)/, ',1)')),
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'bottom' },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const v = ctx.parsed || 0;
+                    const pct = totalAll ? Math.round((v/totalAll)*100) : 0;
+                    return `${ctx.label}: ${v} (${pct}%)`;
+                  }
+                }
+              }
+            },
+            onClick: (evt, elements) => {
+              if (!elements || !elements.length) return;
+              const idx = elements[0].index;
+              const et = labels[idx];
+              if (et) window.location.href = `/calls?search=${encodeURIComponent(et)}`;
+            }
+          }
+        });
+      },
+
+      openFilterModal(){
+        // Build modal using available event types
+        const types = this.data.allEventTypes || [];
+        const grid = document.getElementById('filter-grid');
+        if (!grid) return;
+
+        // draft from current enabledTypes
+        const enabled = (this.data.enabledTypes && this.data.enabledTypes.size > 0)
+          ? new Set(this.data.enabledTypes)
+          : new Set(types); // all enabled
+
+        this.data.modalDraft = enabled;
+
+        grid.innerHTML = types.map(t => {
+          const col = this.getEventTypeColor(t);
+          const checked = enabled.has(t) ? 'checked' : '';
+          const safe = this.escapeHtml(t);
+          return `
+            <label class="chk">
+              <input type="checkbox" data-et="${this.escapeAttr(t)}" ${checked} />
+              <span class="swatch" style="background:${this.escapeAttr(col)};"></span>
+              <span>${safe}</span>
+            </label>
+          `;
+        }).join('');
+
+        // hook changes
+        grid.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          cb.addEventListener('change', () => {
+            const et = cb.getAttribute('data-et');
+            if (!et) return;
+            if (cb.checked) this.data.modalDraft.add(et);
+            else this.data.modalDraft.delete(et);
+          });
+        });
+
+        const mb = document.getElementById('modal-backdrop');
+        if (mb){
+          mb.style.display = 'flex';
+          mb.setAttribute('aria-hidden','false');
+        }
+      },
+
+      closeFilterModal(){
+        const mb = document.getElementById('modal-backdrop');
+        if (mb){
+          mb.style.display = 'none';
+          mb.setAttribute('aria-hidden','true');
+        }
+      },
+
+      selectAllEventTypes(){
+        const types = this.data.allEventTypes || [];
+        this.data.modalDraft = new Set(types);
+        const grid = document.getElementById('filter-grid');
+        if (!grid) return;
+        grid.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+      },
+
+      clearAllEventTypes(){
+        this.data.modalDraft = new Set();
+        const grid = document.getElementById('filter-grid');
+        if (!grid) return;
+        grid.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      },
+
+      applyEventTypeFilters(){
+        const types = this.data.allEventTypes || [];
+        const draft = this.data.modalDraft || new Set(types);
+
+        // if all selected => store empty set (means "all")
+        if (draft.size === types.length) this.data.enabledTypes = new Set();
+        else this.data.enabledTypes = new Set(draft);
+
+        this.closeFilterModal();
+
+        // re-render charts using lastTimeline
+        if (this.data.lastTimeline) {
+          this.renderTimelineChart(this.data.lastTimeline);
+          this.renderPieChart(this.data.lastTimeline);
+        }
+      },
+
+      async ensureRecentEvents(){
+        const now = Date.now();
+        if (this.data.recentEvents.length && (now - this.data.recentLoadedAt) < 15000) return;
+
+        try{
+          const res = await fetch('/api/events/recent?limit=300');
+          const arr = await res.json();
+          this.data.recentEvents = Array.isArray(arr) ? arr : [];
+          this.data.recentLoadedAt = now;
+        }catch(e){
+          console.error("[dashboard] recent events error:", e);
+        }
+      },
+
+      // Search suggestions + navigation
+      async runSearch(qRaw){
+        const q = String(qRaw || '').trim();
+        if (!q || q.length < 2){
+          this.hideSearchResults();
+          return;
+        }
+
+        await this.ensureRecentEvents();
+
+        const ql = q.toLowerCase();
+        const items = [];
+
+        const pushUnique = (key, obj) => {
+          if (items.some(x => x.key === key)) return;
+          items.push({ key, ...obj });
+        };
+
+        // 1) Event type quick match
+        (this.data.allEventTypes || []).forEach(et => {
+          if (String(et).toLowerCase().includes(ql)) {
+            pushUnique(`type:${et}`, {
+              kind: 'type',
+              title: et,
+              sub: 'Event type',
+              go: () => window.location.href = `/calls?search=${encodeURIComponent(et)}`
+            });
+          }
+        });
+
+        // 2) From recent events (bed/room/ward/floor + exact event)
+        (this.data.recentEvents || []).forEach(ev => {
+          const id = ev.id;
+          const et = ev.eventType || ev.event_type || 'Unknown';
+          const bed = ev.bedName || ev.bed_name || '';
+          const room = ev.roomName || ev.room_name || '';
+          const ward = ev.wardName || ev.ward_name || '';
+          const floor = ev.floorName || ev.floor_name || '';
+          const ts = ev.systemTimestamp || ev.system_timestamp || '';
+
+          const hay = `${id} ${et} ${bed} ${room} ${ward} ${floor}`.toLowerCase();
+          if (!hay.includes(ql)) return;
+
+          if (bed) {
+            pushUnique(`bed:${bed}`, {
+              kind: 'bed',
+              title: bed,
+              sub: room ? `Room: ${room}` : 'Bed',
+              go: () => window.location.href = `/calls?search=${encodeURIComponent(bed)}`
+            });
+          }
+          if (room) {
+            pushUnique(`room:${room}`, {
+              kind: 'room',
+              title: room,
+              sub: ward ? `Ward: ${ward}` : 'Room',
+              go: () => window.location.href = `/calls?search=${encodeURIComponent(room)}`
+            });
+          }
+          if (ward) {
+            pushUnique(`ward:${ward}`, {
+              kind: 'ward',
+              title: ward,
+              sub: floor ? `Floor: ${floor}` : 'Ward',
+              go: () => window.location.href = `/calls?search=${encodeURIComponent(ward)}`
+            });
+          }
+          if (floor) {
+            pushUnique(`floor:${floor}`, {
+              kind: 'floor',
+              title: floor,
+              sub: 'Floor',
+              go: () => window.location.href = `/calls?search=${encodeURIComponent(floor)}`
+            });
+          }
+
+          // event item
+          pushUnique(`event:${id}`, {
+            kind: 'event',
+            title: `${et} • ${bed || room || '—'}`,
+            sub: `Event #${id}${ts ? ' • ' + ts : ''}`,
+            go: () => window.location.href = `/calls?eventId=${encodeURIComponent(id)}`
+          });
+        });
+
+        // sort: event first, then bed/room/ward/floor/type
+        const order = { event: 0, bed: 1, room: 2, ward: 3, floor: 4, type: 5 };
+        items.sort((a,b) => (order[a.kind] ?? 99) - (order[b.kind] ?? 99));
+
+        this.showSearchResults(items.slice(0, 10), q);
+      },
+
+      showSearchResults(items, q){
+        const box = document.getElementById('search-results');
+        if (!box) return;
+
+        if (!items.length){
+          box.innerHTML = `
+            <div class="searchResultsHeader">
+              <span>No results</span>
+              <button type="button" onclick="app.hideSearchResults()">Close</button>
+            </div>
+            <div class="searchItem" style="cursor:default;">
+              <span class="searchTag">Tip</span>
+              <div class="searchTxt">
+                <div class="t1">Press Enter to search in Calls</div>
+                <div class="t2">It will open /calls?search=${this.escapeHtml(q)}</div>
+              </div>
+            </div>
+          `;
+          box.style.display = 'block';
+          box.setAttribute('aria-hidden','false');
+          return;
+        }
+
+        box.innerHTML = `
+          <div class="searchResultsHeader">
+            <span>Results</span>
+            <button type="button" onclick="app.hideSearchResults()">Close</button>
+          </div>
+          ${items.map(it => `
+            <div class="searchItem" data-key="${this.escapeAttr(it.key)}">
+              <span class="searchTag">${this.escapeHtml(it.kind)}</span>
+              <div class="searchTxt">
+                <div class="t1">${this.escapeHtml(it.title)}</div>
+                <div class="t2">${this.escapeHtml(it.sub || '')}</div>
+              </div>
+            </div>
+          `).join('')}
+        `;
+
+        box.querySelectorAll('.searchItem').forEach(row => {
+          const key = row.getAttribute('data-key');
+          const it = items.find(x => x.key === key);
+          if (!it) return;
+          row.addEventListener('click', () => {
+            this.hideSearchResults();
+            it.go && it.go();
+          });
+        });
+
+        box.style.display = 'block';
+        box.setAttribute('aria-hidden','false');
+      },
+
+      hideSearchResults(){
+        const box = document.getElementById('search-results');
+        if (!box) return;
+        box.style.display = 'none';
+        box.setAttribute('aria-hidden','true');
+        box.innerHTML = '';
+      },
+
+      // Download report (CSV) from recent events (no server changes required)
+      async downloadReport(){
+        try{
+          await this.ensureRecentEvents();
+
+          // build CSV
+          const rows = [];
+          rows.push([
+            "id","eventType","status","systemTimestamp",
+            "bedName","bedNumber","roomName","roomNumber",
+            "wardName","floorName","cameraAvailable","cameraLive","cameraUrl","intercomIp"
+          ]);
+
+          const safe = (v) => {
+            const s = String(v ?? "");
+            // CSV escape
+            if (s.includes('"') || s.includes(',') || s.includes('\n')) return `"${s.replace(/"/g,'""')}"`;
+            return s;
+          };
+
+          (this.data.recentEvents || []).forEach(e => {
+            rows.push([
+              safe(e.id),
+              safe(e.eventType ?? e.event_type),
+              safe(e.status),
+              safe(e.systemTimestamp ?? e.system_timestamp),
+              safe(e.bedName ?? e.bed_name),
+              safe(e.bedNumber ?? e.bed_number),
+              safe(e.roomName ?? e.room_name),
+              safe(e.roomNumber ?? e.room_number),
+              safe(e.wardName ?? e.ward_name),
+              safe(e.floorName ?? e.floor_name),
+              safe(e.cameraAvailable ?? e.camera_available),
+              safe(e.cameraLive ?? e.camera_live),
+              safe(e.cameraUrl ?? e.camera_url),
+              safe(e.intercomIp ?? e.intercom_ip),
+            ]);
+          });
+
+          const csv = rows.map(r => r.join(",")).join("\n");
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+
+          const days = this.getFilteredDays();
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `nurse_call_report_last_${days}_days.csv`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }catch(e){
+          console.error("[dashboard] download report error:", e);
+          alert("Could not generate report. Check console logs.");
+        }
       },
 
       getFilteredDays() {
@@ -624,6 +1330,18 @@
         const g = parseInt(h.slice(2,4),16);
         const b = parseInt(h.slice(4,6),16);
         return `rgba(${r},${g},${b},${a})`;
+      },
+
+      escapeHtml(s) {
+        return String(s || '')
+          .replace(/&/g,'&amp;')
+          .replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;')
+          .replace(/"/g,'&quot;')
+          .replace(/'/g,'&#039;');
+      },
+      escapeAttr(s) {
+        return this.escapeHtml(s).replace(/`/g, '&#096;');
       }
     };
 
