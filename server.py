@@ -30,6 +30,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from decoder import decode_l7700_packet
 from camera_stream import CameraManager
 from config import Config
+from security_config import default_admin_credentials, get_session_secret
 from models import (
     get_db_engine, get_db_session, init_database,
     Floor, Department, Wing, Ward, Room, Bed, Camera,
@@ -39,7 +40,7 @@ from models import (
 
 # ----------------- Globals -----------------
 
-SECRET_KEY = os.getenv("NCS_SECRET_KEY", "your-secret-key-change-this-in-production")
+SECRET_KEY = get_session_secret()
 
 engine = get_db_engine(
     Config.DATABASE_URL,
@@ -120,13 +121,11 @@ def ensure_default_admin():
     You can change defaults with env:
       NCS_DEFAULT_ADMIN_USER, NCS_DEFAULT_ADMIN_PASS
     """
-    default_user = os.getenv("NCS_DEFAULT_ADMIN_USER", "admin")
-    default_pass = os.getenv("NCS_DEFAULT_ADMIN_PASS", "admin123")
-
     db = UserSessionLocal()
     try:
         any_user = db.query(User).first()
         if not any_user:
+            default_user, default_pass = default_admin_credentials()
             admin = User(
                 username=default_user,
                 password_hash=hash_password(default_pass),
@@ -134,7 +133,7 @@ def ensure_default_admin():
             )
             db.add(admin)
             db.commit()
-            print(f"✓ Created default admin: {default_user} / {default_pass}")
+            print("Created the initial administrator using the configured local credentials.")
     finally:
         db.close()
 
