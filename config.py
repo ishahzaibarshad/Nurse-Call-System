@@ -55,7 +55,7 @@ class Config:
     UDP_PORT = int(os.getenv("UDP_PORT", "6345"))
 
     # ---------- SERVER ----------
-    SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")
+    SERVER_HOST = os.getenv("SERVER_HOST", "127.0.0.1")
     SERVER_PORT = int(os.getenv("SERVER_PORT", "9000"))
 
     # ---------- TIMEZONE ----------

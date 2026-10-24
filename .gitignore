@@ -1,49 +1,29 @@
-# __pycache__/
-# *.pyc
-# *.db
-# *.sqlite3
-# .env
-# venv/
-# .vscode/
-# *.log
-# node_modules/
-# .DS_Store
-
-
-
-# venv
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
 .venv/
 venv/
 ENV/
 env/
 
-# python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.log
-
-# env files
+# Local configuration and data
 .env
 .env.*
 !.env.example
+*.db
+*.sqlite
+*.sqlite3
+*.log
+backtrace.txt
 
-# OS / IDE
-.DS_Store
+# Generated packaging output
+/build/
+/dist/
+*.spec.bak
+
+# IDE and OS
 .vscode/
 .idea/
-
-# local data
-*.sqlite3
-*.db
-
-# migrations cache
-migrations/**/__pycache__/
-EOF
-
-
-
-# backups
-*.bak
-*.bak.*
+.DS_Store
+Thumbs.db
